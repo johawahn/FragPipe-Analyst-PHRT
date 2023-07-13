@@ -1,6 +1,7 @@
 ## New function for volcano plot
 plot_volcano_new <- function(dep, contrast, label_size = 3,
                          add_names = TRUE, adjusted = T, lfc = 1, alpha = 0.05, plot = TRUE) {
+
   # Show error if inputs are not the required classes
   if(is.integer(label_size)) label_size <- as.numeric(label_size)
   assertthat::assert_that(inherits(dep, "SummarizedExperiment"),

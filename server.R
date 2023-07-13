@@ -1,5 +1,6 @@
 #Define server logic to read selected file ----
 server <- function(input, output, session) {
+  print('server')
   options(shiny.maxRequestSize=100*1024^2)## Set maximum upload size to 100MB
   
   observeEvent(input$exp, {
@@ -32,9 +33,11 @@ server <- function(input, output, session) {
     shinyjs::hide("quickstart_info")
     shinyjs::show("panel_list")
   })
-   
+  
   observeEvent(start_analysis() ,{
     if (input$exp == "LFQ"){
+      print("server.R line 39")
+      
       exp <- exp_design_input()
       if (all(is.na(exp$replicate))) {
         showTab(inputId = "tab_panels", target = "quantification_panel")
@@ -82,6 +85,7 @@ server <- function(input, output, session) {
      if(input$analyze==0 ){
        return(F)
      } else {
+       print("server.R line 88")
        if (input$exp == "LFQ"){
          inFile <- input$lfq_expr
          exp_design_file <- input$lfq_manifest
@@ -126,6 +130,7 @@ server <- function(input, output, session) {
    ####======= Render Functions
    
    output$volcano_cntrst <- renderUI({
+     print("server.R line 133")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -137,6 +142,7 @@ server <- function(input, output, session) {
    
    ##comparisons
    output$contrast <- renderUI({
+     print("server.R line 145")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -147,6 +153,7 @@ server <- function(input, output, session) {
    })
    
    output$contrast_1 <- renderUI({
+     print("server.R line 156")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -220,8 +227,11 @@ server <- function(input, output, session) {
     fragpipe_data_example<-reactive({NULL})
     
     fragpipe_data_input<-eventReactive(input$analyze,{
+      print('server.R line 223')
+
       if (input$exp == "LFQ") {
         inFile <- input$lfq_expr
+        annotation <- input$lfq_manifest
       } else if (input$exp == "TMT") {
         inFile <- input$tmt_expr
       } else if (input$exp == "DIA") {
@@ -231,15 +241,39 @@ server <- function(input, output, session) {
       }
       if(is.null(inFile))
         return(NULL)
-      temp_data <- read.table(inFile$datapath,
-                 header = TRUE,
-                 fill= TRUE, # to fill any missing data
-                 sep = "\t",
-                 quote = "",
-                 comment.char = "",
-                 blank.lines.skip = F,
-                 check.names = F)
+      
+      if (input$johanna == "Spectronaut"){
+        print("<========3")
+        temp_data_quant <-  read.csv(inFile$datapath,
+                               header = TRUE, 
+                               sep=",")
+
+  
+        temp_data_annot <-  read.csv(annotation$datapath,
+                                     header = TRUE, 
+                                     sep=",")[c("Run.label","Condition")]
+        
+        
+        temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
+        temp_data <- as.data.frame(temp[[1]])
+        
+        print("##################### QUANT #######################")
+        print(head(temp_data))
+        print("#####################################################")
+        
+        
+      }else{
+        temp_data <- read.table(inFile$datapath,
+                                header = TRUE,
+                                fill= TRUE, # to fill any missing data
+                                sep = "\t",
+                                quote = "",
+                                comment.char = "",
+                                blank.lines.skip = F,
+                                check.names = F)
+      }
       colnames(temp_data) <- make.unique.2(colnames(temp_data), "_")
+      
       # validate(maxquant_input_test(temp_data))
       if (input$exp == "TMT") {
         validate(tmt_input_test(temp_data))
@@ -247,9 +281,11 @@ server <- function(input, output, session) {
         mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "NumberPSM", "Gene", "ProteinID", "MaxPepProb", "ReferenceIntensity")]
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
       } else if (input$exp == "LFQ") {
+        print('server.R line 280')
         # handle - (dash) in experiment column
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
         validate(fragpipe_input_test(temp_data))
+        print('server.R line 284')
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "DIA"){ # DIA
@@ -278,8 +314,11 @@ server <- function(input, output, session) {
     # })
 
     exp_design_input <- eventReactive(input$analyze,{
+      print('server.R line 313')
       if (input$exp == "LFQ"){
+        print('server.R line 315')
         inFile <- input$lfq_manifest
+        quant <-  input$lfq_expr
       } else if (input$exp == "TMT") {
         inFile <- input$tmt_annot
       } else if (input$exp == "DIA") {
@@ -326,10 +365,32 @@ server <- function(input, output, session) {
           temp_df[temp_df$label %in% samples_with_replicate, "label"] <- paste0(temp_df[temp_df$label %in% samples_with_replicate, "label"], "_1")
         }
       } else if (input$exp == "LFQ"){
-        temp_df <- read.table(inFile$datapath,
-                              header = T,
-                              sep="\t",
-                              stringsAsFactors = FALSE)
+        print('tweak line 364')
+        if (input$johanna == "Spectronaut"){
+          print('Tweak line 366')
+          temp_data_annot <-  read.csv(inFile$datapath,
+                                       header = TRUE, 
+                                       sep=",")[c("Run.label","Condition")]
+          
+          temp_data_expr <-  read.csv(quant$datapath,
+                                       header = TRUE, 
+                                       sep=",")
+          
+          
+          temp <- spectronaut_to_fragpipe(temp_data_expr, temp_data_annot)
+          temp_df <- as.data.frame(temp[[2]])
+          
+          print("##################### ANO #######################")
+          print(head(temp_df))
+          print("#####################################################")
+          
+        }else{
+          temp_df <- read.table(inFile$datapath,
+                                header = T,
+                                sep="\t",
+                                stringsAsFactors = FALSE)
+        }
+        
         # exp_design_test(temp_df)
         # temp_df$label<-as.character(temp_df$label)
         # temp_df$condition<-trimws(temp_df$condition, which = "left")
@@ -403,6 +464,8 @@ server <- function(input, output, session) {
    
 ### Reactive components
    processed_data <- eventReactive(start_analysis(),{
+      print('server.R line 409')
+
      ## check which dataset
      if(!is.null (fragpipe_data_input() )){
        fragpipe_data <- reactive({fragpipe_data_input()})
@@ -510,6 +573,8 @@ server <- function(input, output, session) {
    })
    
    filtered_data <- eventReactive(input$analyze,{
+      print('server.R line 518')
+
      # if (input$exp == "LFQ"){ # Check number of replicates
      #   if (input$replicate_filter){
      #     if(!is.null (exp_design_input() )){
@@ -542,6 +607,8 @@ server <- function(input, output, session) {
    })
    
    unimputed_table<-reactive({
+      print('server.R line 552')
+
      temp1 <-assay(processed_data())
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
        colnames(temp1) <- paste(colnames(temp1), "original_spectral_count", sep="_")
@@ -568,6 +635,8 @@ server <- function(input, output, session) {
    })
 
    normalised_data<-reactive({
+      print('server.R line 580')
+
      if (input$exp == "LFQ" | input$exp == "DIA") {
        if (input$normalization == "vsn") {
          if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
