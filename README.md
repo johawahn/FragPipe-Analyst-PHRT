@@ -1,8 +1,9 @@
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 ![R](https://img.shields.io/badge/R-%3E4.2-brightgreen)
 
-# FragPipe-Analyst
+# FragPipe-Analyst-PHRT
 
+Modification of FragPipe-Analyst
 A tool for analyzing quantitative proteomics datasets for [FragPipe](https://fragpipe.nesvilab.org/).
 
 
