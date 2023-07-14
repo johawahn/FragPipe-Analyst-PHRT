@@ -2,16 +2,20 @@
 VERSION <- "v0.25"
 
 ENABLE_PEPTIDE_ANALYSIS <- T
+
+
 if (ENABLE_PEPTIDE_ANALYSIS) {
-  analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA", "SPECTRO"="SPECTRO", "TMT (peptide)"="TMT-peptide")
+  analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA",  "TMT (peptide)"="TMT-peptide")
 } else {
-  analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA", "SPECTRO"="SPECTRO")
+  analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA")
 }
+
+sep_options <- c("comma" = ",", "tab" = "\t")
 
 ui <- function(request){shinyUI(
   dashboardPage(
     skin = "blue",
-    dashboardHeader(title = "FragPipe-Analyst"),
+    dashboardHeader(title = "PHRT-Analyst"),
     # disable = TRUE),# Disable title bar
     dashboardSidebar(
       sidebarMenu(
@@ -27,18 +31,34 @@ ui <- function(request){shinyUI(
                    conditionalPanel(
                      condition = "input.exp == 'LFQ'",
                      radioButtons("johanna",
-                                  "Johanna button",
+                                  "Analysis Software",
                                   choices = c("Spectronaut"="Spectronaut",
                                               "FragPipe"="FragPipe"),
                                   selected = "FragPipe"),
-                     fileInput('lfq_expr', 'Upload FragPipe combined_protein.tsv'),
-                               #accept=c('text/tsv',
-                               #         'text/tab-separated-values,text/plain',
-                                #        '.tsv')),
-                     fileInput('lfq_manifest', 'Upload sample annotation'),
-                               #accept=c('text/tsv',
-                               #         'text/tab-separated-values,text/plain',
-                               #         '.tsv')),
+                     conditionalPanel(
+                       condition = "input.johanna == 'Spectronaut'",
+                       selectInput("spectro_sep_quant", "Enter v file separation:", sep_options, selected = ","),
+                       fileInput('lfq_expr', "Upload Spectronaut allProtein-Report.csv",
+                                 accept=c('text/csv',
+                                          'text/comma-separated-values,text/plain',
+                                          '.csv')),
+                       selectInput("spectro_sep_ano", "Enter v file separation:", sep_options, selected = ","),
+                       fileInput('lfq_manifest', "Upload Spectronaut ConditionSetup.csv",
+                                 accept=c('text/csv',
+                                          'text/comma-separated-values,text/plain',
+                                          '.csv')),
+                     ),
+                     conditionalPanel(
+                       condition = "input.johanna == 'FragPipe'",
+                       fileInput('lfq_expr', 'Upload FragPipe combined_protein.tsv',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                       fileInput('lfq_manifest', 'Upload sample annotation',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                     ),
 
 
                      radioButtons("lfq_type",
@@ -51,17 +71,6 @@ ui <- function(request){shinyUI(
                      downloadLink("lfq_example", label="Example LFQ data"),
                      br(),
                      downloadLink("lfq_annotation", label="Example annotation")),
-                   conditionalPanel(
-                     condition = "input.exp == 'SPECTRO'",
-                     fileInput('spectro_expr', 'Upload spectronaut protein-level report *.tsv',
-                               accept=c('text/tsv',
-                                        'text/tab-separated-values,text/plain',
-                                        '.tsv')),
-                     fileInput('spectro_annot', 'Upload conditions set-up',
-                               accept=c('text/tsv',
-                                        'text/tab-separated-values,text/plain',
-                                        '.tsv'))
-                   ),
                    conditionalPanel(
                      condition = "input.exp == 'TMT'",
                      fileInput('tmt_expr', 'Upload gene-level TMT-I report *.tsv',
@@ -848,7 +857,8 @@ ui <- function(request){shinyUI(
         fluidRow(
           tags$div(
             tags$footer(
-              tags$p("Proteomics & Integrative Bioinformatics Lab at the University of Michigan (P.I. Alexey Nesvizhskii) and the Monash Proteomics & Metabolomics Facility, Monash University (P.I. Ralf Schittenhelm)."),
+              #tags$p("Proteomics & Integrative Bioinformatics Lab at the University of Michigan (P.I. Alexey Nesvizhskii) and the Monash Proteomics & Metabolomics Facility, Monash University (P.I. Ralf Schittenhelm)."),
+              tags$p("Pimped by Patrick"),
               align = "left",
               style = "margin-left: 20px;")
               # style = "position:absolute;

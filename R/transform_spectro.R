@@ -9,20 +9,24 @@ create_annotation <- function(spectro_cond){
   #############################
   # CREATE ANNOTATION FILE
   #############################
+  #Select only useful columns
+  print("IN HEREEEEE")
+  colnames(spectro_cond) <- tolower(colnames(spectro_cond))
+  spectro_cond <- spectro_cond[c('run.label', 'condition')]
   
   #Order by condition 
-  spectro_cond <- spectro_cond[order(spectro_cond$Condition),]
+  spectro_cond <- spectro_cond[order(spectro_cond$condition),]
   row.names(spectro_cond) <- NULL
   
   #Add 'replicate' column
   spectro_cond$replicate <- rep(NA,nrow(spectro_cond))
   
   #Obtain list of conditions
-  conditions <-  unique(spectro_cond$Condition)
+  conditions <-  unique(spectro_cond$condition)
   
   #Add replicate numbers to the condition groups
   for (cond in conditions){
-    idx <- which(spectro_cond$Condition==cond)
+    idx <- which(spectro_cond$condition==cond)
     n_reps <- c(1:length(spectro_cond$replicate[idx]))
     spectro_cond$replicate[idx] <- n_reps
   }
@@ -38,6 +42,10 @@ create_annotation <- function(spectro_cond){
   return(spectro_cond)
 }
 
+#Remove contaminants
+remove_contam_spectro <- function(df){
+  return(df[-grep("CONT|iRT", df$`Protein ID`),]) 
+}
 create_quant <- function(spec_quant){
   #############################
   # TRANSFORM PROTEIN FILE
@@ -84,6 +92,7 @@ create_quant <- function(spec_quant){
   return(list(spectro_quant, spec_sample_names_short))
 }
 
+
 spectronaut_to_fragpipe <-  function(spectro_quant, spectro_cond){
   #############################
   # ENSURE THAT QUANTITY AND
@@ -106,7 +115,7 @@ spectronaut_to_fragpipe <-  function(spectro_quant, spectro_cond){
   spec = spec[,c("Protein ID", "Gene", "Description", "Entry Name", "Protein", 
                 "Combined Total Peptides", paste(correct_samples, "Intensity", 
                                                  sep=" "))]
-  
+  spec = remove_contam_spectro(spec)
   #write.table(spec, file='spec_quantities.tsv', quote=FALSE, sep='\t', 
   #           col.names = TRUE, row.names = FALSE)
   
@@ -123,8 +132,10 @@ spectronaut_to_fragpipe <-  function(spectro_quant, spectro_cond){
 ####################################################
 
 # Read files
-#conditions <- read.csv("data/202302_PHRT-15_ES903_ConditionSetup.csv", header = T, sep=",")[c("Run.label","Condition")]
-#spec_output <- read.csv("data/20230614_090727_202204_PHRT-15_cohort-1_all_Protein-Report.csv", header = T)
+#conditions <- read.csv("data2/20190305_PHRT-5_MMA_ConditionSetup_annotations.xls", header = T, sep="\t")
+#spec_output <- read.csv("230707_Spectronaut18_trans/data/20230614_090727_202204_PHRT-15_cohort-1_all_Protein-Report.csv", header = T)
+
+#spec_frag <-  spectronaut_to_fragpipe(spec_output, conditions)[[1]]
 
 
 # Transform them

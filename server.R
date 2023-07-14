@@ -1,6 +1,7 @@
 #Define server logic to read selected file ----
 server <- function(input, output, session) {
-  print('server')
+
+  
   options(shiny.maxRequestSize=100*1024^2)## Set maximum upload size to 100MB
   
   observeEvent(input$exp, {
@@ -79,13 +80,14 @@ server <- function(input, output, session) {
     #   output$howto<-renderUI({NULL})
     #     }
     # })
- 
+
    ## Shinyalert
    start_analysis <- eventReactive(input$analyze,{ 
      if(input$analyze==0 ){
        return(F)
      } else {
        print("server.R line 88")
+       print(input$spectro_sep)
        if (input$exp == "LFQ"){
          inFile <- input$lfq_expr
          exp_design_file <- input$lfq_manifest
@@ -246,12 +248,12 @@ server <- function(input, output, session) {
         print("<========3")
         temp_data_quant <-  read.csv(inFile$datapath,
                                header = TRUE, 
-                               sep=",")
+                               sep=input$spectro_sep_quant)
 
   
         temp_data_annot <-  read.csv(annotation$datapath,
                                      header = TRUE, 
-                                     sep=",")[c("Run.label","Condition")]
+                                     sep=input$spectro_sep_ano)
         
         
         temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
@@ -370,11 +372,11 @@ server <- function(input, output, session) {
           print('Tweak line 366')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
-                                       sep=",")[c("Run.label","Condition")]
+                                       sep=input$spectro_sep_quant)
           
           temp_data_expr <-  read.csv(quant$datapath,
                                        header = TRUE, 
-                                       sep=",")
+                                       sep=input$spectro_sep_ano)
           
           
           temp <- spectronaut_to_fragpipe(temp_data_expr, temp_data_annot)
