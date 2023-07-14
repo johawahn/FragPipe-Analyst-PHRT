@@ -87,7 +87,6 @@ server <- function(input, output, session) {
        return(F)
      } else {
        print("server.R line 88")
-       print(input$spectro_sep)
        if (input$exp == "LFQ"){
          inFile <- input$lfq_expr
          exp_design_file <- input$lfq_manifest
@@ -318,9 +317,13 @@ server <- function(input, output, session) {
     exp_design_input <- eventReactive(input$analyze,{
       print('server.R line 313')
       if (input$exp == "LFQ"){
+        if(input$johanna == "Spectronaut"){
+          inFile <- input$spectro_manifest
+          quant <-  input$spectro_expr
+        }else
+          inFile <- input$lfq_manifest
         print('server.R line 315')
-        inFile <- input$lfq_manifest
-        quant <-  input$lfq_expr
+        
       } else if (input$exp == "TMT") {
         inFile <- input$tmt_annot
       } else if (input$exp == "DIA") {

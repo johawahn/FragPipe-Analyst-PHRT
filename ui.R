@@ -35,30 +35,36 @@ ui <- function(request){shinyUI(
                                   choices = c("Spectronaut"="Spectronaut",
                                               "FragPipe"="FragPipe"),
                                   selected = "FragPipe"),
+                     
+                     # ONLY THE FIRST CONDITIONAL PANEL WORKS 
+                     conditionalPanel(
+                       condition = "input.johanna == 'FragPipe'",
+                       fileInput('spectro_expr', 'Upload FragPipe combined_protein.tsv',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                       fileInput('spectro_manifest', 'Upload sample annotation',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                     ),
+                     
                      conditionalPanel(
                        condition = "input.johanna == 'Spectronaut'",
-                       selectInput("spectro_sep_quant", "Enter v file separation:", sep_options, selected = ","),
+                       selectInput("spectro_sep_quant", "Enter quantification file separation:", 
+                                   sep_options, selected = ","),
                        fileInput('lfq_expr', "Upload Spectronaut allProtein-Report.csv",
                                  accept=c('text/csv',
                                           'text/comma-separated-values,text/plain',
                                           '.csv')),
-                       selectInput("spectro_sep_ano", "Enter v file separation:", sep_options, selected = ","),
+                       selectInput("spectro_sep_ano", "Enter annotation  file separation:", 
+                                   sep_options, selected = ","),
                        fileInput('lfq_manifest', "Upload Spectronaut ConditionSetup.csv",
                                  accept=c('text/csv',
                                           'text/comma-separated-values,text/plain',
                                           '.csv')),
                      ),
-                     conditionalPanel(
-                       condition = "input.johanna == 'FragPipe'",
-                       fileInput('lfq_expr', 'Upload FragPipe combined_protein.tsv',
-                                 accept=c('text/tsv',
-                                          'text/tab-separated-values,text/plain',
-                                          '.tsv')),
-                       fileInput('lfq_manifest', 'Upload sample annotation',
-                                 accept=c('text/tsv',
-                                          'text/tab-separated-values,text/plain',
-                                          '.tsv')),
-                     ),
+                     
 
 
                      radioButtons("lfq_type",
@@ -185,7 +191,7 @@ ui <- function(request){shinyUI(
                     width = 12,
                     solidHeader = TRUE,
                     status = "primary",
-                    h3("FragPipe-Analyst"),
+                    h3("PHRT-Analyst"),
                     p(HTML(paste0("FragPipe-Analyst is an easy-to-use, interactive web application developed to perform 
                       differential expression analysis with “one click” and to visualize quantitative proteomic datasets analyzed using ",
                                   a(href="https://fragpipe.nesvilab.org/", target="_blank", "FragPipe"), " computational platform.",
@@ -343,7 +349,7 @@ ui <- function(request){shinyUI(
                               box(
                                 title = "Results Table",
                                 shinycssloaders::withSpinner(DT::dataTableOutput("contents"),
-                                                             color = "#3c8dbc"),
+                                                             color = "#10B7A3"),
                                 #  actionButton("clear", "Deselect Rows"),
                                 actionButton("original", "Refresh Table"),
                                 width = 6,
