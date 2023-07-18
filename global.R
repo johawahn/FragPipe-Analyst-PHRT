@@ -26,8 +26,7 @@ library("shinycssloaders") # new added
 library("shiny.info")
 library("fastcluster")
 library("factoextra")
-library("r2symbols")
-symbol("trademark")
+
 
 conflict_prefer("box", "shinydashboard")
 conflict_prefer("select", "dplyr")

@@ -88,8 +88,13 @@ server <- function(input, output, session) {
      } else {
        print("server.R line 88")
        if (input$exp == "LFQ"){
-         inFile <- input$lfq_expr
+         if (input$johanna == "Spectronaut"){
+           inFile <- input$spectro_expr
+           exp_design_file <- input$spectro_manifest
+         }else{inFile <- input$lfq_expr
          exp_design_file <- input$lfq_manifest
+         }
+         
        } else if (input$exp == "TMT") {
          inFile <- input$tmt_expr
          exp_design_file <- input$tmt_annot
@@ -231,8 +236,14 @@ server <- function(input, output, session) {
       print('server.R line 223')
 
       if (input$exp == "LFQ") {
-        inFile <- input$lfq_expr
-        annotation <- input$lfq_manifest
+        if (input$johanna == "Spectronaut"){
+          inFile <- input$spectro_expr
+          print(input$spectro_manifest$datapath)
+          annotation <- input$spectro_manifest
+        }else{
+          inFile <- input$lfq_expr
+        }
+        
       } else if (input$exp == "TMT") {
         inFile <- input$tmt_expr
       } else if (input$exp == "DIA") {
@@ -249,7 +260,7 @@ server <- function(input, output, session) {
                                header = TRUE, 
                                sep=input$spectro_sep_quant)
 
-  
+        print(annotation$datapath)
         temp_data_annot <-  read.csv(annotation$datapath,
                                      header = TRUE, 
                                      sep=input$spectro_sep_ano)
