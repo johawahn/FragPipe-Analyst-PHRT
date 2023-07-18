@@ -1,6 +1,3 @@
-#setwd("~/230707_Spectronaut18_trans")
-#Sys.setlocale("LC_MESSAGES","en_US.UTF-8")
-
 ####################################################
 #                 FUNCTIONS
 ####################################################
@@ -130,23 +127,3 @@ spectronaut_to_fragpipe <-  function(spectro_quant, spectro_cond){
 ####################################################
 #                 MAIN
 ####################################################
-
-# Read files
-#conditions <- read.csv("data2/20190305_PHRT-5_MMA_ConditionSetup_annotations.xls", header = T, sep="\t")
-#spec_output <- read.csv("230707_Spectronaut18_trans/data/20230614_090727_202204_PHRT-15_cohort-1_all_Protein-Report.csv", header = T)
-
-#spec_frag <-  spectronaut_to_fragpipe(spec_output, conditions)[[1]]
-
-
-# Transform them
-#files <-  spectronaut_to_fragpipe(spec_output, conditions)
-
-#spec_quant <-  as.data.frame(files[[1]])
-#spec_annotations <-  as.data.frame(files[[2]])
-
-#write.table(spec_quant, file='spec_quantities_1.tsv', quote=FALSE, sep='\t', 
-#           col.names = TRUE, row.names = FALSE)
-
-
-#write.table(spec_annotations, file='spec_annotations_1.tsv', quote=FALSE, sep='\t', 
-#           col.names = TRUE, row.names = FALSE)
