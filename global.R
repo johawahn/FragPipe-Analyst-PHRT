@@ -18,11 +18,11 @@ library("ensembldb")
 library(EnsDb.Hsapiens.v86)
 library("conflicted")
 library("plotly")
-library("shinyWidgets")# new added
-library("ggVennDiagram") # new added
-library("rhandsontable") # new added
-library("shinyBS") # new added
-library("shinycssloaders") # new added
+library("shinyWidgets")
+library("ggVennDiagram")
+library("rhandsontable")
+library("shinyBS") 
+library("shinycssloaders") 
 library("shiny.info")
 library("fastcluster")
 library("factoextra")
@@ -32,8 +32,8 @@ conflict_prefer("box", "shinydashboard")
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("desc", "dplyr")
-conflict_prefer("setdiff","base") 
-conflict_prefer("intersect", "base")
+conflict_prefer("setdiff","base") #Added
+conflict_prefer("intersect", "base") #Added
 
 source("R/functions.R")
 source("R/volcano_function.R")

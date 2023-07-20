@@ -30,7 +30,7 @@ ui <- function(request){shinyUI(
                    selectInput("exp", "Experiment type:", analysis_options, selected = "LFQ"),
                    conditionalPanel(
                      condition = "input.exp == 'LFQ'",
-                     radioButtons("johanna",
+                     radioButtons("soft_select",
                                   "Analysis Software",
                                   choices = c("Spectronaut"="Spectronaut",
                                               "FragPipe"="FragPipe"),
@@ -38,7 +38,7 @@ ui <- function(request){shinyUI(
                      
                      # ONLY THE FIRST CONDITIONAL PANEL WORKS 
                      conditionalPanel(
-                       condition = "input.johanna == 'FragPipe'",
+                       condition = "input.soft_select == 'FragPipe'",
                        fileInput('lfq_expr', 'Upload FragPipe combined_protein.tsv',
                                  accept=c('text/tsv',
                                           'text/tab-separated-values,text/plain',
@@ -50,7 +50,7 @@ ui <- function(request){shinyUI(
                      ),
                      
                      conditionalPanel(
-                       condition = "input.johanna == 'Spectronaut'",
+                       condition = "input.soft_select == 'Spectronaut'",
                        selectInput("spectro_sep_quant", "Enter quantification file separation:", 
                                    sep_options, selected = ","),
                        fileInput('spectro_expr', "Upload Spectronaut allProtein-Report.csv",

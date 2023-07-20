@@ -88,7 +88,7 @@ server <- function(input, output, session) {
      } else {
        print("server.R line 88")
        if (input$exp == "LFQ"){
-         if (input$johanna == "Spectronaut"){
+         if (input$soft_select == "Spectronaut"){
            inFile <- input$spectro_expr
            exp_design_file <- input$spectro_manifest
          }else{inFile <- input$lfq_expr
@@ -236,7 +236,7 @@ server <- function(input, output, session) {
       print('server.R line 223')
 
       if (input$exp == "LFQ") {
-        if (input$johanna == "Spectronaut"){
+        if (input$soft_select == "Spectronaut"){
           inFile <- input$spectro_expr
           print(input$spectro_manifest$datapath)
           annotation <- input$spectro_manifest
@@ -254,7 +254,7 @@ server <- function(input, output, session) {
       if(is.null(inFile))
         return(NULL)
       
-      if (input$johanna == "Spectronaut"){
+      if (input$soft_select == "Spectronaut"){
         print("<========3")
         temp_data_quant <-  read.csv(inFile$datapath,
                                header = TRUE, 
@@ -270,7 +270,7 @@ server <- function(input, output, session) {
         temp_data <- as.data.frame(temp[[1]])
         
         print("##################### QUANT #######################")
-        print(head(temp_data))
+        #print(head(temp_data))
         print("#####################################################")
         
         
@@ -304,6 +304,7 @@ server <- function(input, output, session) {
         validate(fragpipe_DIA_input_test(temp_data))
         # temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "TMT-peptide") {
+        # You save everything except those columns
         mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "Gene", "ProteinID",	"Peptide", "MaxPepProb", "ReferenceIntensity")]
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
       }
@@ -328,7 +329,7 @@ server <- function(input, output, session) {
     exp_design_input <- eventReactive(input$analyze,{
       print('server.R line 313')
       if (input$exp == "LFQ"){
-        if(input$johanna == "Spectronaut"){
+        if(input$soft_select == "Spectronaut"){
           inFile <- input$spectro_manifest
           quant <-  input$spectro_expr
         }else
@@ -382,7 +383,7 @@ server <- function(input, output, session) {
         }
       } else if (input$exp == "LFQ"){
         print('tweak line 364')
-        if (input$johanna == "Spectronaut"){
+        if (input$soft_select == "Spectronaut"){
           print('Tweak line 366')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
@@ -397,7 +398,7 @@ server <- function(input, output, session) {
           temp_df <- as.data.frame(temp[[2]])
           
           print("##################### ANO #######################")
-          print(head(temp_df))
+          #print(head(temp_df))
           print("#####################################################")
           
         }else{
@@ -588,6 +589,7 @@ server <- function(input, output, session) {
      }
    })
    
+
    filtered_data <- eventReactive(input$analyze,{
       print('server.R line 518')
 
@@ -1488,9 +1490,10 @@ output$download_density_svg<-downloadHandler(
     sample_cols <- colnames(df)
    
     if (input$exp == "LFQ"){
+      print("########### TEST COLNAMES #############")
       # MaxQuant Protein.names is Description in FragPipe output
       # MaxQuant Gene.names is Gene in FragPipe output
-      # print(colnames(rowData(processed_data())))
+       print(colnames(rowData(processed_data())))
       # "Protein"                        "Protein ID"                     "Entry Name"                    
       # "Gene"                           "Protein Length"                 "Organism"                      
       # "Protein Existence"              "Description"                    "Protein Probability"           
