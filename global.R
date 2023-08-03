@@ -1,3 +1,4 @@
+suppressPackageStartupMessages({
 library("SummarizedExperiment")
 library("tidyverse")
 library("DEP")
@@ -26,7 +27,10 @@ library("shinycssloaders")
 library("shiny.info")
 library("fastcluster")
 library("factoextra")
+})
 
+
+options(shiny.reactlog=TRUE)
 
 conflict_prefer("box", "shinydashboard")
 conflict_prefer("select", "dplyr")
@@ -42,3 +46,5 @@ source("R/tests.R")
 source("R/demo_functions.R")
 source("R/enrichment_functions.R")
 source("R/filter.R")
+source("R/transform_spectro.R")
+source("R/LFQpep_to_TMTpep.R")

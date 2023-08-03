@@ -91,19 +91,26 @@ server <- function(input, output, session) {
          if (input$soft_select == "Spectronaut"){
            inFile <- input$spectro_expr
            exp_design_file <- input$spectro_manifest
-         }else{inFile <- input$lfq_expr
-         exp_design_file <- input$lfq_manifest
+         }else{
+           # If its FragPipe's LFQ file
+          inFile <- input$lfq_expr
+          exp_design_file <- input$lfq_manifest
          }
-         
-       } else if (input$exp == "TMT") {
+       }else if (input$exp == "TMT") {
          inFile <- input$tmt_expr
          exp_design_file <- input$tmt_annot
        } else if (input$exp == "DIA") {
          inFile <- input$dia_expr
          exp_design_file <- input$dia_manifest
        } else if (input$exp == "TMT-peptide") {
-         inFile <- input$tmt_pept_expr
-         exp_design_file <- input$tmt_pept_annot
+         if(input$work_select == "LFQ"){
+           inFile <- input$lfq_pept_expr
+           exp_design_file <- input$lfq_pept_annot
+         }else{
+           inFile <- input$tmt_pept_expr
+           exp_design_file <- input$tmt_pept_annot
+         }
+         
        }
        if (is.null(inFile) | is.null(exp_design_file)) {
          shinyalert("Input file missing!", "Please checkout your input files", type="info",
@@ -159,7 +166,7 @@ server <- function(input, output, session) {
    })
    
    output$contrast_1 <- renderUI({
-     print("server.R line 156")
+     print("server.R line 162")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -233,34 +240,36 @@ server <- function(input, output, session) {
     fragpipe_data_example<-reactive({NULL})
     
     fragpipe_data_input<-eventReactive(input$analyze,{
-      print('server.R line 223')
+      print('server.R line 240')
 
       if (input$exp == "LFQ") {
         if (input$soft_select == "Spectronaut"){
           inFile <- input$spectro_expr
-          print(input$spectro_manifest$datapath)
           annotation <- input$spectro_manifest
         }else{
           inFile <- input$lfq_expr
         }
         
-      } else if (input$exp == "TMT") {
+      }  else if (input$exp == "TMT") {
         inFile <- input$tmt_expr
       } else if (input$exp == "DIA") {
         inFile <- input$dia_expr
       } else if (input$exp == "TMT-peptide") {
-        inFile <- input$tmt_pept_expr
+        if(input$work_select == "LFQ"){
+          inFile <- input$lfq_pept_expr
+        }else{
+          inFile <- input$tmt_pept_expr
+        }
+
       }
       if(is.null(inFile))
         return(NULL)
       
       if (input$soft_select == "Spectronaut"){
-        print("<========3")
         temp_data_quant <-  read.csv(inFile$datapath,
                                header = TRUE, 
                                sep=input$spectro_sep_quant)
 
-        print(annotation$datapath)
         temp_data_annot <-  read.csv(annotation$datapath,
                                      header = TRUE, 
                                      sep=input$spectro_sep_ano)
@@ -269,12 +278,15 @@ server <- function(input, output, session) {
         temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
         temp_data <- as.data.frame(temp[[1]])
         
-        print("##################### QUANT #######################")
+        #print("##################### QUANT #######################")
         #print(head(temp_data))
-        print("#####################################################")
+        #print("#####################################################")
         
         
-      }else{
+      } else if (input$work_select == 'LFQ'){
+        temp_data <- quant_lfq_to_tmt(inFile$datapath, input$lfq_pept_type)
+          
+      } else{
         temp_data <- read.table(inFile$datapath,
                                 header = TRUE,
                                 fill= TRUE, # to fill any missing data
@@ -283,6 +295,8 @@ server <- function(input, output, session) {
                                 comment.char = "",
                                 blank.lines.skip = F,
                                 check.names = F)
+        
+
       }
       colnames(temp_data) <- make.unique.2(colnames(temp_data), "_")
       
@@ -293,21 +307,33 @@ server <- function(input, output, session) {
         mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "NumberPSM", "Gene", "ProteinID", "MaxPepProb", "ReferenceIntensity")]
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
       } else if (input$exp == "LFQ") {
-        print('server.R line 280')
+        print('server.R line 303')
         # handle - (dash) in experiment column
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
         validate(fragpipe_input_test(temp_data))
-        print('server.R line 284')
+        print('server.R line 307')
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "DIA"){ # DIA
         validate(fragpipe_DIA_input_test(temp_data))
         # temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "TMT-peptide") {
-        # You save everything except those columns
-        mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "Gene", "ProteinID",	"Peptide", "MaxPepProb", "ReferenceIntensity")]
+        if(input$work_select == "LFQ"){
+          mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "Gene", "ProteinID",	
+                                                                      "Peptide", "MaxPepProb", "ReferenceIntensity",
+                                                                      "ModPeptides")]
+          
+        } else{
+         mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "Gene", "ProteinID",	
+                                                                    "Peptide", "MaxPepProb", "ReferenceIntensity")] 
+        }
+        
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
-      }
+
+      } 
+      print("##################### QUANT #######################")
+      print(head(temp_data))
+      print("#####################################################")
       return(temp_data)
     })
 
@@ -327,29 +353,41 @@ server <- function(input, output, session) {
     # })
 
     exp_design_input <- eventReactive(input$analyze,{
-      print('server.R line 313')
+      print('server.R line 348')
       if (input$exp == "LFQ"){
         if(input$soft_select == "Spectronaut"){
           inFile <- input$spectro_manifest
           quant <-  input$spectro_expr
         }else
           inFile <- input$lfq_manifest
-        print('server.R line 315')
+        print('server.R line 355')
         
       } else if (input$exp == "TMT") {
         inFile <- input$tmt_annot
       } else if (input$exp == "DIA") {
         inFile <- input$dia_manifest
       } else if (input$exp == "TMT-peptide") {
-        inFile <- input$tmt_pept_annot
+        if (input$work_select == "LFQ"){
+          inFile <- input$lfq_pept_annot
+        }else{
+          inFile <- input$tmt_pept_annot
+        }
+        
       }
       if (is.null(inFile))
         return(NULL)
       if (input$exp == "TMT" | input$exp == "TMT-peptide") {
-        temp_df <- read.table(inFile$datapath,
+        if(input$work_select == "LFQ"){
+          
+          temp_df <- anot_lfq_to_tmt(inFile$datapath)
+          print(head(temp_df))
+        } else{
+          temp_df <- read.table(inFile$datapath,
                               header = T,
                               sep="\t",
                               stringsAsFactors = FALSE)
+        }
+        
         # To support txt file
         if (ncol(temp_df) == 1){
           # submitting annotation.txt (not experiment_annotation.tsv) will crash here
@@ -381,10 +419,15 @@ server <- function(input, output, session) {
           samples_with_replicate <- unique(gsub("_\\d+$", "", samples_with_replicate))
           temp_df[temp_df$label %in% samples_with_replicate, "label"] <- paste0(temp_df[temp_df$label %in% samples_with_replicate, "label"], "_1")
         }
+        
+        #print("##################### ANO #######################")
+        #print(head(temp_df))
+        #print("#####################################################")
+        
       } else if (input$exp == "LFQ"){
-        print('tweak line 364')
+        print('tweak line 402')
         if (input$soft_select == "Spectronaut"){
-          print('Tweak line 366')
+          print('Tweak line 404')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
                                        sep=input$spectro_sep_quant)
@@ -397,15 +440,16 @@ server <- function(input, output, session) {
           temp <- spectronaut_to_fragpipe(temp_data_expr, temp_data_annot)
           temp_df <- as.data.frame(temp[[2]])
           
-          print("##################### ANO #######################")
-          #print(head(temp_df))
-          print("#####################################################")
-          
         }else{
+          print("server line 430")
           temp_df <- read.table(inFile$datapath,
                                 header = T,
                                 sep="\t",
                                 stringsAsFactors = FALSE)
+          
+          print("##################### ANO #######################")
+          #print(head(temp_df))
+          print("#####################################################")
         }
         
         # exp_design_test(temp_df)
@@ -481,7 +525,7 @@ server <- function(input, output, session) {
    
 ### Reactive components
    processed_data <- eventReactive(start_analysis(),{
-      print('server.R line 409')
+      print('server.R line 505')
 
      ## check which dataset
      if(!is.null (fragpipe_data_input() )){
@@ -493,9 +537,14 @@ server <- function(input, output, session) {
      }
      
      filtered_data <- fragpipe_data()
+     print("##################### Filtered data #######################")
+      print(head(filtered_data))
+     print("#####################################################")
+     
      if (input$exp == "LFQ"){
        data_unique <- DEP::make_unique(filtered_data, "Gene", "Protein ID")
        
+       print(head(data_unique))
        if (input$lfq_type == "Intensity") {
          lfq_columns <- setdiff(grep("Intensity", colnames(data_unique)),
                               grep("MaxLFQ", colnames(data_unique)))
@@ -507,7 +556,7 @@ server <- function(input, output, session) {
            stop(safeError("No MaxLFQ column available. Please make sure your files have MaxLFQ intensity columns."))
          }
        } else if (input$lfq_type == "Spectral Count") {
-         lfq_columns<-grep("Spectral", colnames(data_unique))
+         lfq_columns <- grep("Spectral", colnames(data_unique))
          lfq_columns <- setdiff(lfq_columns, grep("Total Spectral Count", colnames(data_unique)))
          lfq_columns <- setdiff(lfq_columns, grep("Unique Spectral Count", colnames(data_unique)))
        }
@@ -515,11 +564,22 @@ server <- function(input, output, session) {
        ## Check for matching columns in expression report and experiment manifest file
        test_match_lfq_column_manifest(data_unique, lfq_columns, exp_design())
        if (input$lfq_type == "Spectral Count") {
-         data_se <- make_se_customized(data_unique, lfq_columns, exp_design(), log2transform=F, exp="LFQ", lfq_type="Spectral Count")
+         data_se <- make_se_customized(data_unique, lfq_columns, exp_design(), log2transform=F, exp="LFQ", 
+                                       lfq_type="Spectral Count", level="protein")
        } else {
-         data_se <- make_se_customized(data_unique, lfq_columns, exp_design(), log2transform=T, exp="LFQ", lfq_type=input$lfq_type)
+         data_se <- make_se_customized(data_unique, lfq_columns, exp_design(), log2transform=T, exp="LFQ", 
+                                         lfq_type=input$lfq_type, level="protein")
        }
+       
+       
+  
+       print("##############<3 data_se ################")
+       print(data_se)
+       print("###############################################")   
+       
        return(data_se)
+       
+       
      } else if (input$exp == "DIA") {
        data_unique <- DEP::make_unique(filtered_data, "Genes", "Protein.Group")
        cols <- colnames(data_unique)
@@ -570,6 +630,7 @@ server <- function(input, output, session) {
        }
        return(data_se)
      } else if (input$exp == "TMT-peptide") {
+       print("server.R line 598")
        temp_exp_design <- exp_design()
        # sample without specified condition will be removed
        temp_exp_design <- temp_exp_design[!is.na(temp_exp_design$condition), ]
@@ -577,21 +638,25 @@ server <- function(input, output, session) {
        data_unique <- make_unique(filtered_data, "Index", "ProteinID")
        # handle unmatched columns
        overlapped_samples <- intersect(colnames(data_unique), temp_exp_design$label)
-       interest_cols <- c("Index", "Gene", "ProteinID", "Peptide", "MaxPepProb", "ReferenceIntensity", "name", "ID")
+       interest_cols <- c("Index", "Gene", "ProteinID", "Peptide", "MaxPepProb", "ReferenceIntensity", 
+                          "name", "ID", "ModPeptides")
        data_unique <- data_unique[, colnames(data_unique) %in% c(interest_cols, overlapped_samples)]
        temp_exp_design <- temp_exp_design[temp_exp_design$label %in% overlapped_samples, ]
        cols <- colnames(data_unique)
-         selected_cols <- which(!(cols %in% interest_cols))
+       selected_cols <- which(!(cols %in% interest_cols))
        test_match_tmt_column_design(data_unique, selected_cols, temp_exp_design)
        # TMT-I report is already log2 transformed
        data_se <- make_se_customized(data_unique, selected_cols, temp_exp_design, exp="TMT", level="peptide")
+       print("##############<3 data_se ################")
+       print(data_se)
+       print("###############################################")       
        return(data_se)
      }
    })
    
 
    filtered_data <- eventReactive(input$analyze,{
-      print('server.R line 518')
+      print('server.R line 620')
 
      # if (input$exp == "LFQ"){ # Check number of replicates
      #   if (input$replicate_filter){
@@ -625,7 +690,7 @@ server <- function(input, output, session) {
    })
    
    unimputed_table<-reactive({
-      print('server.R line 552')
+      print('server.R line 654')
 
      temp1 <-assay(processed_data())
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
@@ -653,7 +718,7 @@ server <- function(input, output, session) {
    })
 
    normalised_data<-reactive({
-      print('server.R line 580')
+      print('server.R line 746')
 
      if (input$exp == "LFQ" | input$exp == "DIA") {
        if (input$normalization == "vsn") {
@@ -668,6 +733,7 @@ server <- function(input, output, session) {
    })
    
    normalized_table<-reactive({
+     print('server.R line 761')
      temp1 <-assay(normalised_data())
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
        colnames(temp1) <- paste(colnames(temp1), "normalized_spectral_count", sep="_")
@@ -690,6 +756,9 @@ server <- function(input, output, session) {
        # TMT report might has same issue for earlier version of FragPipe (<= 18.0)
       imputed <- impute_customized(normalised_data(),input$imputation)
      } 
+     print("########## server line 784 #############")
+     print(imputed)
+     print("########################################")
      return(imputed)
    })
    
@@ -704,6 +773,9 @@ server <- function(input, output, session) {
      }
 
      temp1 <- cbind(ProteinID=rownames(temp1),temp1)
+     print("########## server line 791 #############")
+     print(temp1)
+     print("########################################")
      return(as.data.frame(temp1))
    })
    
@@ -720,20 +792,34 @@ server <- function(input, output, session) {
      # diff_all <- test_diff_customized(imputed_data(), type = "manual",
      #                      test = c("SampleTypeTumor"), design_formula = formula(~0+SampleType))
      data <- imputed_data()
+     print("######## data line 820  ##############")
+     print(data)
+     print("##########################################")
+     
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
        assay(data) <- log2(assay(data))
      }
      if(input$fdr_correction=="BH"){
+       print("Correction is BH")
        diff_all <- test_limma_customized(data, type='all', paired = F)
+       print("######## data line 830 ##############")
+       print(diff_all)
+       print("##########################################")
      } else { # t-statistics-based
+       print("Correction is t-test basic")
        diff_all <- test_diff_customized(data, type = "all")
      }
      result_se <- add_rejections_customized(diff_all, alpha = input$p, lfc= input$lfc)
+     print("######## result_se line 837 ##############")
+     print(result_se)
+     print("##########################################")
      return(result_se)
    })
    
    comparisons<-reactive ({
+     print("server.R line 810 COMPARISON()")
     if (input$exp == "TMT"  | input$exp == "DIA" | input$exp == "TMT-peptide") {
+      print("server.R line 812")
        temp<-capture.output(test_diff_customized(imputed_data(), type = "all"), type = "message")
        # temp<-capture.output(test_diff_customized(imputed_data(), type = "manual", 
        #                                           test = c("SampleTypeTumor"), design_formula = formula(~0+SampleType)),
@@ -743,7 +829,9 @@ server <- function(input, output, session) {
        unlist(strsplit(temp,","))
        ## Remove leading and trailing spaces
        trimws(temp)
-     } else if (input$exp == "LFQ") {
+       print("temp line 822")
+       #print(temp)
+     } else if (input$exp == "LFQ" ) {
        temp<-capture.output(test_diff(imputed_data(),type='all'),type = "message")
        gsub(".*: ","",temp)
        ## Split conditions into character vector
@@ -812,15 +900,18 @@ server <- function(input, output, session) {
    })
    
    ### Heatmap for differentially expressed proteins
-   heatmap_cluster<-eventReactive(input$analyze, { 
+   heatmap_cluster<-eventReactive({
+     input$analyze
+     input$show_row_names
+   }, { 
      if(input$analyze==0 | !start_analysis()){
        return()
      }
      heatmap_list <- get_cluster_heatmap(dep(),
-                         type="centered", kmeans = F,
-                         alpha = input$p, lfc = input$lfc,
-                         indicate = "condition", exp=input$exp
-                         )
+                                         type="centered", kmeans = F,
+                                         alpha = input$p, lfc = input$lfc,
+                                         indicate = "condition", exp=input$exp, show_row_names=input$show_row_names
+     )
      return(heatmap_list)
    })
    
@@ -921,18 +1012,22 @@ server <- function(input, output, session) {
     })
     
     protein_input<-reactive({
-      protein_selected <- data_result()[input$contents_rows_selected,1]
-      protein_selected <- as.character(protein_selected)
       if (input$check_impute) {
         data <- imputed_data()
       } else {
         data <- processed_data()
       }
-      if(length(levels(as.factor(colData(processed_data())$replicate))) <= 8){
-        plot_protein(data, protein_selected, as.character(input$type), id="label")
+      if (input$exp == "TMT" & metadata(data)$level == "protein") {
+        protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
       } else {
-        protein_plot<-plot_protein(data, protein_selected, as.character(input$type), id="label")
-        protein_plot + scale_color_brewer(palette = "Paired")
+        protein_selected <- data_result()[input$contents_rows_selected, c("Gene Name")]
+      }
+      protein_selected <- as.character(protein_selected)
+      if(length(levels(as.factor(colData(processed_data())$replicate))) <= 8){
+        return(plot_protein(data, protein_selected, as.character(input$type), id="label"))
+      } else {
+        protein_plot <- plot_protein(data, protein_selected, as.character(input$type), id="label")
+        return(protein_plot + scale_color_brewer(palette = "Paired"))
       }
     })
      
@@ -998,7 +1093,12 @@ server <- function(input, output, session) {
    })
    
    cvs_input<-reactive({
-     plot_cvs(dep(), id="label", scale=!input$cvs_full_range, check.names=F)
+     if (input$work_select == "LFQ"){
+       plot_cvs(dep(), id="label", scale=!input$cvs_full_range, check.names=F, work_select=T) 
+     } else {
+      plot_cvs(dep(), id="label", scale=!input$cvs_full_range, check.names=F) 
+     }
+     
    })
    
    num_total <- reactive({
@@ -1048,10 +1148,24 @@ server <- function(input, output, session) {
 
   ##### Get results dataframe from Summarizedexperiment object
    data_result <- eventReactive(input$analyze, {
-      get_results_proteins(dep(), input$exp)
-      #get_results(dep())
-    })
+     if(input$work_select=='LFQ'){
+     get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE)}
+     else{get_results_proteins(dep(), input$exp)}}
+     )
+   
+   
+   
 
+    data_result_pep <- eventReactive(input$analyze, {
+      as.data.frame(assay(dep())) %>% 
+           mutate(across(.cols = where(is.numeric), ~replace_na(., 0))) %>%
+           mutate(ProteinID = rowData(dep())$ProteinID) %>%
+           group_by(ProteinID) %>%
+           summarise(across(.cols = where(is.numeric), .fns = sum))
+    })
+   
+
+   
   #### Data table
    output$contents <- DT::renderDataTable({
      df<- data_result()
@@ -1060,25 +1174,58 @@ server <- function(input, output, session) {
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
                     columnDefs= list(list(width = '400px', targets = c(-1)))))
-  
-  ## Deselect all rows button
-  proxy <- dataTableProxy("contents")
-  
-  observeEvent(input$clear,{
-    proxy %>% selectRows(NULL)
-  })
-  
-  observeEvent(input$original,{
-    output$contents <- DT::renderDataTable({
-      df<- data_result()
-      return(df)
-    },
-    options = list(scrollX = TRUE,
-                   autoWidth=TRUE,
-                   columnDefs= list(list(width = '400px', targets = c(-1))))
-    )
-  })
+   
+   ## Deselect all rows button
+   proxy <- dataTableProxy("contents")
+   
+   observeEvent(input$clear,{
+     proxy %>% selectRows(NULL)
+   })
+   
+   observeEvent(input$original,{
+     output$contents <- DT::renderDataTable({
+       df<- data_result()
+       return(df)
+     },
+     options = list(scrollX = TRUE,
+                    autoWidth=TRUE,
+                    columnDefs= list(list(width = '400px', targets = c(-1))))
+     )
+   })
+   
+   
+   observeEvent(input$work_select,
+                {if(input$work_select=='LFQ'){
+                  output$pep_contents <- DT::renderDataTable({
+                    df<- data_result_pep()
+                    return(df)
+                  },
+                  options = list(scrollX = TRUE,
+                                 autoWidth=TRUE,
+                                 columnDefs= list(list(width = '400px', targets = c(1)))))
+                  ## Deselect all rows button
+                  proxy <- dataTableProxy("pep_contents")
+                  
+                  observeEvent(input$clear,{
+                    proxy %>% selectRows(NULL)
+                  })
+                  
+                  observeEvent(input$pep_original,{
+                    output$pep_contents <- DT::renderDataTable({
+                      df<- data_result_pep()
+                      return(df)
+                    },
+                    options = list(scrollX = TRUE,
+                                   autoWidth=TRUE,
+                                   columnDefs= list(list(width = '400px', targets = c(-1))))
+                    )
+                  })
+                  
+                }})
+   
+   
 
+ 
   protein_name_brush<- reactive({
     if (input$p_adj) {
       yvar <- "adjusted_p_value_-log10"
@@ -1100,7 +1247,8 @@ server <- function(input, output, session) {
                                                   input$check_names,
                                                   input$p_adj, plot=F), input$protein_brush,
                                  xvar = "log2_fold_change", yvar = yvar)
-      proteins_selected <- data_result()[c(input$contents_rows_selected), "Gene Name"] ## get all rows selected
+      proteins_selected <- data_result()[c(input$contents_rows_selected), "Gene Name"]
+      print(proteins_selected)## get all rows selected
       return(c(proteins_selected, protein_tmp$protein))
     }
   })
@@ -1110,7 +1258,7 @@ server <- function(input, output, session) {
   makeReactiveBinding("brush")
   observeEvent(input$protein_brush,{
     data <- data_result()
-    proxy %>% selectRows(which(data[["Gene Name"]] %in% protein_name_brush()))
+    proxy %>% selectRows(which(data[["Gene Name"]] %in% volcano_input_selected()))
   })
  
  observeEvent(input$resetPlot,{
@@ -1489,11 +1637,9 @@ output$download_density_svg<-downloadHandler(
     df <- as.data.frame(assay(processed_data()), check.names=F)
     sample_cols <- colnames(df)
    
-    if (input$exp == "LFQ"){
-      print("########### TEST COLNAMES #############")
+    if (input$exp == "LFQ" ){
       # MaxQuant Protein.names is Description in FragPipe output
       # MaxQuant Gene.names is Gene in FragPipe output
-       print(colnames(rowData(processed_data())))
       # "Protein"                        "Protein ID"                     "Entry Name"                    
       # "Gene"                           "Protein Length"                 "Organism"                      
       # "Protein Existence"              "Description"                    "Protein Probability"           
@@ -1528,6 +1674,9 @@ output$download_density_svg<-downloadHandler(
       df <- dplyr::relocate(df, "Protein", "Gene", "Description", "Combined.Total.Peptides")
     } else { # DIA doesn't work yet
       # "Protein.Group", "Protein.Ids", "Protein.Names", "Genes", "First.Protein.Description" "name"
+      print("########### server.R line 1633 #############")
+      #print(processed_data)
+      print("############################################")
       df$Gene <- rowData(processed_data())$Genes
       df$Description <- rowData(processed_data())$First.Protein.Description
       df$Protein <- rowData(processed_data())$Protein.Ids

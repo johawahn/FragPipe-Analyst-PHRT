@@ -7,7 +7,6 @@ create_annotation <- function(spectro_cond){
   # CREATE ANNOTATION FILE
   #############################
   #Select only useful columns
-  print("IN HEREEEEE")
   colnames(spectro_cond) <- tolower(colnames(spectro_cond))
   spectro_cond <- spectro_cond[c('run.label', 'condition')]
   

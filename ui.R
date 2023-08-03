@@ -5,7 +5,10 @@ ENABLE_PEPTIDE_ANALYSIS <- T
 
 
 if (ENABLE_PEPTIDE_ANALYSIS) {
-  analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA",  "TMT (peptide)"="TMT-peptide")
+  #analysis_options <- c("LFQ"="LFQ", "LFQ (peptide)"="LFQ-peptide", 
+  #                      "TMT"="TMT", "DIA"="DIA", "Peptide"="TMT-peptide")
+  analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", 
+                        "DIA"="DIA", "Peptide"="TMT-peptide")
 } else {
   analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA")
 }
@@ -25,10 +28,12 @@ ui <- function(request){shinyUI(
           menuItem('Home', icon=icon("home"), selected = TRUE, tabName = "home")
         ),
         convertMenuItem(
+          # ANALYSY
           tabName = 'analysis',
           menuItem("Analysis", tabName="analysis", icon=icon("flask"),
                    selectInput("exp", "Experiment type:", analysis_options, selected = "LFQ"),
                    conditionalPanel(
+                     # LFQ (PROTEIN)
                      condition = "input.exp == 'LFQ'",
                      radioButtons("soft_select",
                                   "Analysis Software",
@@ -36,7 +41,6 @@ ui <- function(request){shinyUI(
                                               "FragPipe"="FragPipe"),
                                   selected = "FragPipe"),
                      
-                     # ONLY THE FIRST CONDITIONAL PANEL WORKS 
                      conditionalPanel(
                        condition = "input.soft_select == 'FragPipe'",
                        fileInput('lfq_expr', 'Upload FragPipe combined_protein.tsv',
@@ -48,6 +52,7 @@ ui <- function(request){shinyUI(
                                           'text/tab-separated-values,text/plain',
                                           '.tsv')),
                      ),
+                     
                      
                      conditionalPanel(
                        condition = "input.soft_select == 'Spectronaut'",
@@ -77,7 +82,27 @@ ui <- function(request){shinyUI(
                      downloadLink("lfq_example", label="Example LFQ data"),
                      br(),
                      downloadLink("lfq_annotation", label="Example annotation")),
+                   
+                   #conditionalPanel(
+                     # LFQ (PEPTIDE)
+                    # condition = "input.exp == 'LFQ-peptide'",
+                    # fileInput('lfq_pept_expr', 'Upload combined modified peptide report.tsv',
+                     #          accept=c('text/tsv',
+                      #                  'text/tab-separated-values,text/plain',
+                       #                 '.tsv')),
+                    # fileInput('lfq_pept_manifest', 'Upload sample annotation',
+                     #          accept=c('text/tsv',
+                      #                  'text/tab-separated-values,text/plain',
+                       #                 '.tsv')),
+                     #radioButtons("lfq_type",
+                      #            "Intensity Type",
+                       #           choices = c("Intensity"="Intensity",
+                        #                      "MaxLFQ Intensity"="MaxLFQ",
+                         #                     "Spectral Count"="Spectral Count"),
+                          #        selected = "Intensity")),
+                   
                    conditionalPanel(
+                     # TMT (PROTEIN)
                      condition = "input.exp == 'TMT'",
                      fileInput('tmt_expr', 'Upload gene-level TMT-I report *.tsv',
                                accept=c('text/tsv',
@@ -88,7 +113,9 @@ ui <- function(request){shinyUI(
                                         'text/tab-separated-values,text/plain',
                                         '.tsv'))
                      ),
+                   
                    conditionalPanel(
+                     # DIA
                      condition = "input.exp == 'DIA'",
                      fileInput('dia_expr', 'Upload protein group (PG) matrix *.tsv',
                                accept=c('text/tsv',
@@ -98,17 +125,49 @@ ui <- function(request){shinyUI(
                                accept=c('text/tsv',
                                         'text/tab-separated-values,text/plain',
                                         '.tsv'))),
+                   
                    conditionalPanel(
+                     # TMT (PEPTIDE)
                      condition = "input.exp == 'TMT-peptide'",
-                     fileInput('tmt_pept_expr', 'Upload peptide-level TMT-I report *.tsv',
-                               accept=c('text/tsv',
-                                        'text/tab-separated-values,text/plain',
-                                        '.tsv')),
-                     fileInput('tmt_pept_annot', 'Upload sample annotation',
-                               accept=c('text/tsv',
-                                        'text/tab-separated-values,text/plain',
-                                        '.tsv'))
-                   ),
+                     
+                     radioButtons("work_select",
+                                  "Workflow",
+                                  choices = c("TMT"="TMT",
+                                              "LFQ"="LFQ"),
+                                  selected = "TMT"),
+                     
+                     conditionalPanel(
+                       condition = "input.work_select == 'TMT'",
+                       fileInput('tmt_pept_expr', 'Upload peptide-level TMT-I report *.tsv',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                       fileInput('tmt_pept_annot', 'Upload sample annotation',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                     ),
+                     
+                     
+                     conditionalPanel(
+                       condition = "input.work_select == 'LFQ'",
+                       fileInput('lfq_pept_expr', 'Upload combined modified peptide report.tsv',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                       fileInput('lfq_pept_annot', 'Upload sample annotation',
+                                 accept=c('text/tsv',
+                                          'text/tab-separated-values,text/plain',
+                                          '.tsv')),
+                       radioButtons("lfq_pept_type",
+                                    "Intensity Type",
+                                    choices = c("Intensity"="Intensity",
+                                                "MaxLFQ Intensity"="MaxLFQ",
+                                                "Spectral Count"="Spectral Count"),
+                                    selected = "Intensity")
+                     )),
+                   
+                   
                  tags$hr(),
                  menuItem("Advanced Options",tabName="advanced", icon = icon("cogs"),
                           numericInput("min_global_appearance",
@@ -346,6 +405,7 @@ ui <- function(request){shinyUI(
                           
                           ## Data table and result plots box
                           fluidRow(id="results_tab",
+                              
                               box(
                                 title = "Results Table",
                                 shinycssloaders::withSpinner(DT::dataTableOutput("contents"),
@@ -443,7 +503,19 @@ ui <- function(request){shinyUI(
                                              )
                                            )
                               ) # tabBox end
-                            ) # box or column end
+                            ), conditionalPanel(
+                              condition = "input.work_select == 'LFQ'",
+                              box(
+                                title = "Peptide Results Table",
+                                shinycssloaders::withSpinner(DT::dataTableOutput("pep_contents"),
+                                                             color = "#10B7A3"),
+                                #  actionButton("clear", "Deselect Rows"),
+                                actionButton("pep_original", "Refresh Table"),
+                                width = 6,
+                                status = "success",
+                                #color=""
+                                solidHeader = TRUE
+                              )) # box or column end
          ), # result fluidRow close
         
         ## QC Box

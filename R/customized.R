@@ -1,3 +1,8 @@
+########## JOJO NOTES ###########
+# I replaced legendgrouptitle_text with legendgrouptitle to solve the long warning in
+# the terminal
+#################################
+
 # customized functions to make LFQ-FP functional
 
 # original: make_se from
@@ -30,7 +35,8 @@
 #' exp_design <- UbiLength_ExpDesign
 #' se <- make_se(data_unique, columns, exp_design)
 #' @export
-make_se_customized <- function(proteins_unique, columns, expdesign, log2transform=F, exp="LFQ", lfq_type=NULL, exp_type=NULL, level=NULL) {
+make_se_customized <- function(proteins_unique, columns, expdesign, log2transform=F, exp="LFQ", 
+                               lfq_type=NULL, exp_type=NULL, level=NULL) {
   # Show error if inputs are not the required classes
   assertthat::assert_that(is.data.frame(proteins_unique),
                           is.integer(columns),
@@ -91,7 +97,7 @@ make_se_customized <- function(proteins_unique, columns, expdesign, log2transfor
   # Select the rowData
   row_data <- proteins_unique[, -columns]
   rownames(row_data) <- row_data$name
-
+  
   # Generate the SummarizedExperiment object
   se <- SummarizedExperiment(assays = as.matrix(raw),
                              colData = expdesign,
@@ -220,6 +226,8 @@ test_diff_customized <- function(se, type = c("control", "all", "manual"),
     cntrst <- gsub("_vs_", " - ", test)
     
   }
+  
+  message("customized.R test_diff_customized")
   # Print tested contrasts
   message("Tested contrasts: ",
           paste(gsub(" - ", "_vs_", cntrst), collapse = ", "))
@@ -311,6 +319,7 @@ test_diff_customized <- function(se, type = c("control", "all", "manual"),
 #' dep <- add_rejections(diff, alpha = 0.05, lfc = 1)
 #' @export
 add_rejections_customized <- function(diff, alpha = 0.05, lfc = 1) {
+  message("customized.R add_rejections_customized")
   # Show error if inputs are not the required classes
   if(is.integer(alpha)) alpha <- as.numeric(alpha)
   if(is.integer(lfc)) lfc <- as.numeric(lfc)
@@ -369,6 +378,8 @@ add_rejections_customized <- function(diff, alpha = 0.05, lfc = 1) {
 
 # similar to test_match_lfq_column_design
 test_match_tmt_column_design <- function(unique_data, lfq_columns, exp_design){
+  message("customized.R test_match_tmt_column_design")
+  
   # Show error if inputs are not the required classes
   assertthat::assert_that(is.data.frame(unique_data),
                           is.integer(lfq_columns),
@@ -414,6 +425,9 @@ test_match_tmt_column_design <- function(unique_data, lfq_columns, exp_design){
 
 # similar to test_match_lfq_column_design
 test_match_DIA_column_design <- function(unique_data, lfq_columns, exp_design){
+  
+  message("customized.R test_match_DIA_column_design")
+  
   # Show error if inputs are not the required classes
   assertthat::assert_that(is.data.frame(unique_data),
                           is.integer(lfq_columns),
@@ -498,6 +512,8 @@ test_match_DIA_column_design <- function(unique_data, lfq_columns, exp_design){
 #' head(significant_proteins)
 #' @export
 get_results_customized <- function(dep) {
+  message("customized.R get_results_customized")
+  
   # Show error if inputs are not the required classes
   assertthat::assert_that(inherits(dep, "SummarizedExperiment"))
   
@@ -654,7 +670,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                 xaxis="x",
                 yaxis="y",
                 legendgroup=indicate[1],
-                legendgrouptitle_text=indicate[1]) %>%
+                legendgrouptitle=indicate[1]) %>%
       add_trace(data=pca_df, type = "scatter", marker = list(size = point_size),
                 mode = 'markers',
                 x = ~PC1,
@@ -662,7 +678,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                 text = pca_df$sample_name,
                 color = as.formula(paste0('~', "plex")),
                 legendgroup="plex",
-                legendgrouptitle_text="plex",
+                legendgrouptitle="plex",
                 xaxis="x2",
                 yaxis="y2", visible = FALSE, inherit = FALSE) %>%
       plotly::layout(title = paste0('PCA plot (', n, " features used)"),
@@ -710,7 +726,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                   color = as.formula(paste0('~', indicate[1])),
                   mode = 'markers',
                   legendgroup=indicate[1],
-                  legendgrouptitle_text=indicate[1])
+                  legendgrouptitle=indicate[1])
     }
   } else if(length(indicate) == 2) {
     if (exp == "TMT"){
@@ -726,7 +742,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                   hoverinfo = 'text',
                   mode = 'markers',
                   legendgroup=indicate[2],
-                  legendgrouptitle_text=indicate[2]) %>%
+                  legendgrouptitle=indicate[2]) %>%
         add_trace(data=pca_df, type = "scatter",
                   x = ~PC1,
                   y = ~PC2,
@@ -736,7 +752,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                   text = pca_df$sample_name,
                   hoverinfo = 'text',
                   legendgroup=indicate[1],
-                  legendgrouptitle_text=indicate[1]) %>%
+                  legendgrouptitle=indicate[1]) %>%
         add_trace(data=pca_df, type = "scatter",
                   x = ~PC1,
                   y = ~PC2,
@@ -746,7 +762,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                   hoverinfo = 'text',
                   mode = 'markers',
                   legendgroup="plex",
-                  legendgrouptitle_text="plex",
+                  legendgrouptitle="plex",
                   xaxis="x2", yaxis="y2", visible=F) %>%
         plotly::layout(title = paste0('PCA plot (', n, " features used)"),
                        xaxis = list(title = paste0("PC", x, ": ", percent[x], "%")),
@@ -799,7 +815,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                   text = pca_df$sample_name,
                   hoverinfo = 'text',
                   legendgroup=indicate[2],
-                  legendgrouptitle_text=indicate[2]) %>%
+                  legendgrouptitle=indicate[2]) %>%
         add_trace(type = "scatter",
                   x = ~PC1,
                   y = ~PC2,
@@ -808,7 +824,7 @@ plot_pca_plotly <- function(dep, x = 1, y = 2, indicate = c("condition", "replic
                   text = pca_df$sample_name,
                   hoverinfo = 'text',
                   legendgroup=indicate[1],
-                  legendgrouptitle_text=indicate[1]) %>%
+                  legendgrouptitle=indicate[1]) %>%
         plotly::layout(title = paste0('PCA plot (', n, " features used)"),
                        xaxis = list(title = paste0("PC", x, ": ", percent[x], "%")),
                        yaxis = list(title = paste0("PC", y, ": ", percent[y], "%")),

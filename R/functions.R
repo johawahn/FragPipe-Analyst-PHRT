@@ -17,10 +17,15 @@ coef_variation<-function(x){
 
 #### Plot CVs
 
-plot_cvs<-function(se, id="ID", scale=T, check.names=T) {
+plot_cvs<-function(se, id="ID", scale=T, check.names=T, work_select=F) {
   
-  ## backtransform data
-  untransformed_intensity<- 2^(assay(se))
+  ## backtransform data if its not lfq-peptide
+  if (work_select){
+    untransformed_intensity<- assay(se)
+  } else {
+    untransformed_intensity<- 2^(assay(se))
+  }
+  
   exp_design<-colData(se)
 
   ### merge untransformed to exp design and calculate cvs
@@ -532,11 +537,12 @@ test_limma <- function(se, type = c("control", "all", "manual"),
   #return(table)
 }
 
-get_results_proteins <- function(dep, exp) {
+get_results_proteins <- function(dep, exp, PEP_LFQ=FALSE) {
+
   # Show error if inputs are not the required classes
   assertthat::assert_that(inherits(dep, "SummarizedExperiment"))
-  
   row_data <- rowData(dep)
+  
   # Show error if inputs do not contain required columns
   if(any(!c("name", "ID") %in% colnames(row_data))) {
     stop("'name' and/or 'ID' columns are not present in '",
@@ -601,6 +607,7 @@ get_results_proteins <- function(dep, exp) {
     table <- table %>% dplyr::arrange(desc(significant))
     colnames(table)[1] <- c("Protein ID")
     colnames(table)[2] <- c("Gene Name")
+    
   } else if (exp == "TMT") {
     if(metadata(dep)$level == "gene") {
       ids <- as.data.frame(row_data) %>% dplyr::select(name, ID)
@@ -636,7 +643,11 @@ get_results_proteins <- function(dep, exp) {
     colnames(table)[1] <- c("Protein ID")
     colnames(table)[2] <- c("Gene Name")
   } else if (metadata(dep)$exp == "TMT" & metadata(dep)$level == "peptide") {
-    ids <- as.data.frame(row_data) %>% dplyr::select(name, ProteinID, Gene)
+    
+    if(PEP_LFQ){cols <- c("name", "ProteinID", "Gene", "ModPeptides")}
+    else{cols <- c("name", "ProteinID", "Gene")}
+    ids <- as.data.frame(row_data) %>% dplyr::select(cols)
+    
     table <- dplyr::left_join(ids, ratio, by=c("name"="rowname"))
     table <- dplyr::left_join(table, pval, by = c("name" = "rowname"))
     
@@ -647,7 +658,9 @@ get_results_proteins <- function(dep, exp) {
     colnames(table)[1] <- c("Index")
     colnames(table)[2] <- c("Protein ID")
     colnames(table)[3] <- c("Gene Name")
-  }
+    if(PEP_LFQ){colnames(table)[4] <- c("Modified Peptides")}
+    
+  }  
   return(table)
 }
 
