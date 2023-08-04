@@ -413,6 +413,7 @@ ui <- function(request){shinyUI(
                                 #  actionButton("clear", "Deselect Rows"),
                                 actionButton("original", "Refresh Table"),
                                 width = 6,
+                                height = 980,
                                 status = "success",
                                 #color=""
                                 solidHeader = TRUE
@@ -512,6 +513,7 @@ ui <- function(request){shinyUI(
                                 #  actionButton("clear", "Deselect Rows"),
                                 actionButton("pep_original", "Refresh Table"),
                                 width = 6,
+                                height = 980,
                                 status = "success",
                                 #color=""
                                 solidHeader = TRUE

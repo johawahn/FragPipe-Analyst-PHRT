@@ -946,7 +946,14 @@ server <- function(input, output, session) {
     volcano_input_selected<-reactive({
       if(!is.null(input$volcano_cntrst)){
         if (!is.null(input$contents_rows_selected)){
-          proteins_selected<-data_result()[c(input$contents_rows_selected),]## get all rows selected
+          if (input$exp == "TMT-peptide" & input$work_select == "LFQ"){
+            prot_group <- data_result()[input$contents_rows_selected, c("Protein ID")]
+            proteins_selected <- data_result()[which(data_result()["Protein ID"] == prot_group), ] 
+            
+          } else {
+            proteins_selected<-data_result()[c(input$contents_rows_selected),]## get all rows selected
+          }
+          
         } else if(!is.null(input$protein_brush)){
           proteins_selected <- data_result()[data_result()[["Gene Name"]] %in% protein_name_brush(), ] 
         }
@@ -962,10 +969,18 @@ server <- function(input, output, session) {
                                colnames(proteins_selected))
         }
         if (metadata(dep())$level == "peptide") {
-          df_peptide <- data.frame(x = proteins_selected[, diff_proteins],
-                                   y = -log10(as.numeric(proteins_selected[, padj_proteins])),
-                                   name = proteins_selected$`Index`,
-                                   proteinID = proteins_selected$`Protein ID`)
+          if (input$work_select == 'LFQ'){
+            df_peptide <- data.frame(x = proteins_selected[, diff_proteins],
+                                     y = -log10(as.numeric(proteins_selected[, padj_proteins])),
+                                     name = proteins_selected$`Index`,
+                                     proteinID = proteins_selected$`Protein ID`)
+          } else {
+            df_peptide <- data.frame(x = proteins_selected[, diff_proteins],
+                                     y = -log10(as.numeric(proteins_selected[, padj_proteins])),
+                                     name = proteins_selected$`Index`,
+                                     proteinID = proteins_selected$`Protein ID`)
+          }
+          
           p <- plot_volcano_new(dep(),
                                 input$volcano_cntrst,
                                 input$fontsize,
@@ -978,7 +993,8 @@ server <- function(input, output, session) {
                                      size = 4,
                                      box.padding = unit(0.1, 'lines'),
                                      point.padding = unit(0.1, 'lines'),
-                                     segment.size = 0.5)## use the dataframe to plot points
+                                     segment.size = 0.5) +
+            labs(title = "max.overlaps = Inf")## use the dataframe to plot points
         } else {
           df_protein <- data.frame(x = proteins_selected[, diff_proteins],
                           y = -log10(as.numeric(proteins_selected[, padj_proteins])),#)#,
@@ -1019,6 +1035,9 @@ server <- function(input, output, session) {
       }
       if (input$exp == "TMT" & metadata(data)$level == "protein") {
         protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
+      } else if ( input$exp == "TMT-peptide"){
+        protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
+        protein_selected <- data_result()[which(data_result()["Protein ID"] == protein_selected), c("Index")] 
       } else {
         protein_selected <- data_result()[input$contents_rows_selected, c("Gene Name")]
       }
