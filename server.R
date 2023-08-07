@@ -1192,7 +1192,8 @@ server <- function(input, output, session) {
      },
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
-                    columnDefs= list(list(width = '400px', targets = c(-1)))))
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20)))
    
    ## Deselect all rows button
    proxy <- dataTableProxy("contents")
@@ -1208,20 +1209,32 @@ server <- function(input, output, session) {
      },
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
-                    columnDefs= list(list(width = '400px', targets = c(-1))))
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20))
      )
    })
    
    
    observeEvent(input$work_select,
                 {if(input$work_select=='LFQ'){
+                  output$mod_options <- renderUI({
+                    selectInput("mods_in_data",
+                                label = "Select Modification",
+                                choices = unique(na.omit(str_extract(data_result()$`Modified Peptides`, 
+                                                                     '[:upper:]\\[\\d+\\.\\d+\\]'))),
+                                multiple = T,
+                                selected = "")
+                    
+                  })
+                  
                   output$pep_contents <- DT::renderDataTable({
                     df<- data_result_pep()
                     return(df)
                   },
                   options = list(scrollX = TRUE,
                                  autoWidth=TRUE,
-                                 columnDefs= list(list(width = '400px', targets = c(1)))))
+                                 columnDefs= list(list(width = '400px', targets = c(1))),
+                                 lengthMenu = c(10, 20)))
                   ## Deselect all rows button
                   proxy <- dataTableProxy("pep_contents")
                   
@@ -1236,12 +1249,66 @@ server <- function(input, output, session) {
                     },
                     options = list(scrollX = TRUE,
                                    autoWidth=TRUE,
-                                   columnDefs= list(list(width = '400px', targets = c(-1))))
+                                   columnDefs= list(list(width = '400px', targets = c(-1))),
+                                   lengthMenu = c(10, 20))
+                    
+                    
                     )
                   })
+
+                  ## Filter PROTEIN results table by mod
+
+                  #proxy_prots_mod <- dataTableProxy("pep_contents")
                   
+                  #observeEvent(input$filter_prot,{
+                  #  proxy %>% selectRows(NULL)
+                 # })
+                  
+                 # observeEvent(input$pep_original,{
+                  #  output$pep_contents <- DT::renderDataTable({
+                  #    df<- data_result_pep()
+                  #    return(df)
+                 #   },
+                 #   options = list(scrollX = TRUE,
+                  #                 autoWidth=TRUE,
+                   #                columnDefs= list(list(width = '400px', targets = c(-1))),
+                    #               lengthMenu = c(10, 20)))})
+                  
+                  
+
                 }})
    
+   observeEvent(input$mods_in_data,{print(input$mods_in_data)})
+   
+   ## Filter results table by mod
+   proxy_peps_mod <- dataTableProxy("contents")
+   
+   
+   observeEvent(input$filter_prot,{
+     idx <- grep(paste0(str_replace_all(input$mods_in_data, "[\\[\\].]", "\\\\\\0"), 
+                        collapse="|"), data_result()$`Modified Peptides`)
+     output$contents <- DT::renderDataTable({
+       df<- data_result()[idx,]
+       return(df)
+     },
+     options = list(scrollX = TRUE,
+                    autoWidth=TRUE,
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20)))
+     
+     
+     idx_prots <- which(data_result_pep()$`ProteinID` %in% unique(data_result()[idx,"Protein ID"]))
+     
+     output$pep_contents <- DT::renderDataTable({
+       df<- data_result_pep()[idx_prots,]
+       return(df)
+     },
+     options = list(scrollX = TRUE,
+                    autoWidth=TRUE,
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20)))
+     })
+
    
 
  

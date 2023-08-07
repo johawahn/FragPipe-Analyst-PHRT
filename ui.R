@@ -507,11 +507,19 @@ ui <- function(request){shinyUI(
                             ), conditionalPanel(
                               condition = "input.work_select == 'LFQ'",
                               box(
-                                title = "Peptide Results Table",
+                                title = "Protein Results Table",
+                                shinyjs::useShinyjs(),  # Add this line to enable shinyjs
+                                shinyjs::inlineCSS(
+                                  ".dropdown-container { display: flex; justify-content: space-between; align-items: center; }"
+                                ),
+                                div(
+                                  class = "dropdown-container",
+                                  uiOutput("mod_options")),
                                 shinycssloaders::withSpinner(DT::dataTableOutput("pep_contents"),
                                                              color = "#10B7A3"),
                                 #  actionButton("clear", "Deselect Rows"),
                                 actionButton("pep_original", "Refresh Table"),
+                                actionButton("filter_prot", "Filter by modification"),
                                 width = 6,
                                 height = 980,
                                 status = "success",
