@@ -706,3 +706,10 @@ delete_prefix <- function(words) {
   # Delete prefix from words
   gsub(paste0("^", prefix), "", words)
 }
+
+#### ===== Protein to 
+
+
+
+
+

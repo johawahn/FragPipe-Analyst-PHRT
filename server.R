@@ -331,9 +331,7 @@ server <- function(input, output, session) {
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
 
       } 
-      print("##################### QUANT #######################")
-      print(head(temp_data))
-      print("#####################################################")
+
       return(temp_data)
     })
 
@@ -380,7 +378,6 @@ server <- function(input, output, session) {
         if(input$work_select == "LFQ"){
           
           temp_df <- anot_lfq_to_tmt(inFile$datapath)
-          print(head(temp_df))
         } else{
           temp_df <- read.table(inFile$datapath,
                               header = T,
@@ -537,14 +534,10 @@ server <- function(input, output, session) {
      }
      
      filtered_data <- fragpipe_data()
-     print("##################### Filtered data #######################")
-      print(head(filtered_data))
-     print("#####################################################")
      
      if (input$exp == "LFQ"){
        data_unique <- DEP::make_unique(filtered_data, "Gene", "Protein ID")
        
-       print(head(data_unique))
        if (input$lfq_type == "Intensity") {
          lfq_columns <- setdiff(grep("Intensity", colnames(data_unique)),
                               grep("MaxLFQ", colnames(data_unique)))
@@ -571,11 +564,6 @@ server <- function(input, output, session) {
                                          lfq_type=input$lfq_type, level="protein")
        }
        
-       
-  
-       print("##############<3 data_se ################")
-       print(data_se)
-       print("###############################################")   
        
        return(data_se)
        
@@ -647,9 +635,7 @@ server <- function(input, output, session) {
        test_match_tmt_column_design(data_unique, selected_cols, temp_exp_design)
        # TMT-I report is already log2 transformed
        data_se <- make_se_customized(data_unique, selected_cols, temp_exp_design, exp="TMT", level="peptide")
-       print("##############<3 data_se ################")
-       print(data_se)
-       print("###############################################")       
+     
        return(data_se)
      }
    })
@@ -756,9 +742,7 @@ server <- function(input, output, session) {
        # TMT report might has same issue for earlier version of FragPipe (<= 18.0)
       imputed <- impute_customized(normalised_data(),input$imputation)
      } 
-     print("########## server line 784 #############")
-     print(imputed)
-     print("########################################")
+
      return(imputed)
    })
    
@@ -773,9 +757,7 @@ server <- function(input, output, session) {
      }
 
      temp1 <- cbind(ProteinID=rownames(temp1),temp1)
-     print("########## server line 791 #############")
-     print(temp1)
-     print("########################################")
+
      return(as.data.frame(temp1))
    })
    
@@ -793,8 +775,7 @@ server <- function(input, output, session) {
      #                      test = c("SampleTypeTumor"), design_formula = formula(~0+SampleType))
      data <- imputed_data()
      print("######## data line 820  ##############")
-     print(data)
-     print("##########################################")
+
      
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
        assay(data) <- log2(assay(data))
@@ -803,16 +784,14 @@ server <- function(input, output, session) {
        print("Correction is BH")
        diff_all <- test_limma_customized(data, type='all', paired = F)
        print("######## data line 830 ##############")
-       print(diff_all)
-       print("##########################################")
+
      } else { # t-statistics-based
        print("Correction is t-test basic")
        diff_all <- test_diff_customized(data, type = "all")
      }
      result_se <- add_rejections_customized(diff_all, alpha = input$p, lfc= input$lfc)
      print("######## result_se line 837 ##############")
-     print(result_se)
-     print("##########################################")
+
      return(result_se)
    })
    
@@ -946,7 +925,7 @@ server <- function(input, output, session) {
     volcano_input_selected<-reactive({
       if(!is.null(input$volcano_cntrst)){
         if (!is.null(input$contents_rows_selected)){
-          if (input$exp == "TMT-peptide" & input$work_select == "LFQ"){
+          if (input$exp == "TMT-peptide" & input$all_peps_prot){
             prot_group <- data_result()[input$contents_rows_selected, c("Protein ID")]
             proteins_selected <- data_result()[which(data_result()["Protein ID"] == prot_group), ] 
             
@@ -969,17 +948,11 @@ server <- function(input, output, session) {
                                colnames(proteins_selected))
         }
         if (metadata(dep())$level == "peptide") {
-          if (input$work_select == 'LFQ'){
-            df_peptide <- data.frame(x = proteins_selected[, diff_proteins],
-                                     y = -log10(as.numeric(proteins_selected[, padj_proteins])),
-                                     name = proteins_selected$`Index`,
-                                     proteinID = proteins_selected$`Protein ID`)
-          } else {
-            df_peptide <- data.frame(x = proteins_selected[, diff_proteins],
-                                     y = -log10(as.numeric(proteins_selected[, padj_proteins])),
-                                     name = proteins_selected$`Index`,
-                                     proteinID = proteins_selected$`Protein ID`)
-          }
+          df_peptide <- data.frame(x = proteins_selected[, diff_proteins],
+                                   y = -log10(as.numeric(proteins_selected[, padj_proteins])),
+                                   name = proteins_selected$`Index`,
+                                   proteinID = proteins_selected$`Protein ID`)
+          
           
           p <- plot_volcano_new(dep(),
                                 input$volcano_cntrst,
@@ -993,8 +966,8 @@ server <- function(input, output, session) {
                                      size = 4,
                                      box.padding = unit(0.1, 'lines'),
                                      point.padding = unit(0.1, 'lines'),
-                                     segment.size = 0.5) +
-            labs(title = "max.overlaps = Inf")## use the dataframe to plot points
+                                     segment.size = 0.5, 
+                                     max.overlaps = Inf)# use the dataframe to plot points
         } else {
           df_protein <- data.frame(x = proteins_selected[, diff_proteins],
                           y = -log10(as.numeric(proteins_selected[, padj_proteins])),#)#,
@@ -1035,9 +1008,11 @@ server <- function(input, output, session) {
       }
       if (input$exp == "TMT" & metadata(data)$level == "protein") {
         protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
-      } else if ( input$exp == "TMT-peptide"){
+      } else if (input$exp == "TMT-peptide" & input$all_peps_prot){
         protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
         protein_selected <- data_result()[which(data_result()["Protein ID"] == protein_selected), c("Index")] 
+      } else if (input$exp == "TMT-peptide" & !input$all_peps_prot) {
+        protein_selected <- data_result()[input$contents_rows_selected, c("Index")]
       } else {
         protein_selected <- data_result()[input$contents_rows_selected, c("Gene Name")]
       }
@@ -1172,18 +1147,83 @@ server <- function(input, output, session) {
      else{get_results_proteins(dep(), input$exp)}}
      )
    
-   
-   
 
     data_result_pep <- eventReactive(input$analyze, {
       as.data.frame(assay(dep())) %>% 
            mutate(across(.cols = where(is.numeric), ~replace_na(., 0))) %>%
            mutate(ProteinID = rowData(dep())$ProteinID) %>%
-           group_by(ProteinID) %>%
+           mutate(Gene = rowData(dep())$Gene) %>%
+           group_by(ProteinID, Gene) %>%
            summarise(across(.cols = where(is.numeric), .fns = sum))
     })
-   
 
+    exp_design <- eventReactive(input$analyze, {
+      exp_design_input() %>%
+        mutate(condition = make.names(exp_design_input()$condition)) %>%
+        mutate(sample = gsub("-", ".", exp_design_input()$sample)) %>%
+        mutate(label = exp_design_input()$sample) %>%
+        mutate_at(vars(label), ~ {
+          lfq_column_suffix <- case_when(
+            input$lfq_type == "Intensity" ~ "Intensity",
+            input$lfq_type == "MaxLFQ" ~ "MaxLFQ.Intensity",
+            input$lfq_type == "Spectral Count" ~ "Spectral.Count"
+          )
+          paste(., lfq_column_suffix, sep = " ")
+        })
+    })
+
+    result_se_sum_prot <- eventReactive(input$analyze, {
+      if(input$work_select=='LFQ'){
+        as.data.frame(data_result_pep()) %>%
+          DEP::make_unique("Gene", "ProteinID") %>%
+          rename_with(
+            ~ paste(., 
+                    case_when(
+                      input$lfq_type == "Intensity" ~ "Intensity",
+                      input$lfq_type == "MaxLFQ" ~ "MaxLFQ.Intensity",
+                      input$lfq_type == "Spectral Count" ~ "Spectral.Count"
+                    ), 
+                    sep = " "), 
+            -c("Gene", "ProteinID", "name", "ID")
+          )  %>%
+          make_se_customized(., which(!colnames(data_result_pep()) %in% c("Gene", "ProteinID", "name", "ID")),
+                             as.data.frame(exp_design()), log2transform = TRUE, exp = "LFQ", 
+                             lfq_type = input$lfq_type, level = "protein") %>%
+          test_diff_customized(type = "all") %>%
+          add_rejections_customized(alpha = input$p, lfc = input$lfc)
+    }})
+    
+    observeEvent(input$work_select,
+                 {if(input$work_select=='LFQ'){
+                  
+                   volcano_input_sum_prot <- reactive({
+                     if(!is.null(input$volcano_cntrst)) {
+                       plot_volcano_new(result_se_sum_prot(),
+                                        input$volcano_cntrst,
+                                        input$fontsize,
+                                        input$check_names,
+                                        input$p_adj,
+                                        input$lfc,
+                                        input$p)
+                     }
+                   })
+                   
+                   output$volcano_sum_prot <- renderPlot({
+                     withProgress(message = 'Volcano plot calculations are in progress',
+                                  detail = 'Please wait for a while', value = 0, {
+                                    for (i in 1:15) {
+                                      incProgress(1/15)
+                                      Sys.sleep(0.25)
+                                    }
+                                  })
+                     
+                     volcano_input_sum_prot()
+                     
+                     
+                   })
+                 }})
+    
+    
    
   #### Data table
    output$contents <- DT::renderDataTable({
@@ -1229,6 +1269,7 @@ server <- function(input, output, session) {
                   
                   output$pep_contents <- DT::renderDataTable({
                     df<- data_result_pep()
+                    print(head(df))
                     return(df)
                   },
                   options = list(scrollX = TRUE,
@@ -1255,26 +1296,6 @@ server <- function(input, output, session) {
                     
                     )
                   })
-
-                  ## Filter PROTEIN results table by mod
-
-                  #proxy_prots_mod <- dataTableProxy("pep_contents")
-                  
-                  #observeEvent(input$filter_prot,{
-                  #  proxy %>% selectRows(NULL)
-                 # })
-                  
-                 # observeEvent(input$pep_original,{
-                  #  output$pep_contents <- DT::renderDataTable({
-                  #    df<- data_result_pep()
-                  #    return(df)
-                 #   },
-                 #   options = list(scrollX = TRUE,
-                  #                 autoWidth=TRUE,
-                   #                columnDefs= list(list(width = '400px', targets = c(-1))),
-                    #               lengthMenu = c(10, 20)))})
-                  
-                  
 
                 }})
    

@@ -413,7 +413,7 @@ ui <- function(request){shinyUI(
                                 #  actionButton("clear", "Deselect Rows"),
                                 actionButton("original", "Refresh Table"),
                                 width = 6,
-                                height = 980,
+                                height = "auto",
                                 status = "success",
                                 #color=""
                                 solidHeader = TRUE
@@ -441,6 +441,15 @@ ui <- function(request){shinyUI(
                                                                "Adjusted p values",
                                                                value = T),
                                                  width = 4),
+                                             
+                                           ),
+                                           fluidRow(
+                                             conditionalPanel(
+                                               condition = "input.exp == 'TMT-peptide'",
+                                               box(checkboxInput("all_peps_prot",
+                                                                 "Display all peptides from same protein",
+                                                                 value = T))
+                                             ),
                                            ),
                                            fluidRow(
                                              box(
@@ -506,26 +515,47 @@ ui <- function(request){shinyUI(
                               ) # tabBox end
                             ), conditionalPanel(
                               condition = "input.work_select == 'LFQ'",
+                               box(
+                                 title = "Protein Results Table",
+                                 shinyjs::useShinyjs(),  # Add this line to enable shinyjs
+                                 shinyjs::inlineCSS(
+                                   ".dropdown-container { display: flex; justify-content: space-between; align-items: center; }"
+                                 ),
+                                 div(
+                                   class = "dropdown-container",
+                                   uiOutput("mod_options")),
+                                 shinycssloaders::withSpinner(DT::dataTableOutput("pep_contents"),
+                                                              color = "#10B7A3"),
+                                 #  actionButton("clear", "Deselect Rows"),
+                                 actionButton("pep_original", "Refresh Table"),
+                                 actionButton("filter_prot", "Filter by modification"),
+                                 width = 6,
+                                 height = "auto",
+                                 status = "success",
+                                 #color=""
+                                 solidHeader = TRUE
+                               ),
+                                     # column(
                               box(
-                                title = "Protein Results Table",
-                                shinyjs::useShinyjs(),  # Add this line to enable shinyjs
-                                shinyjs::inlineCSS(
-                                  ".dropdown-container { display: flex; justify-content: space-between; align-items: center; }"
-                                ),
-                                div(
-                                  class = "dropdown-container",
-                                  uiOutput("mod_options")),
-                                shinycssloaders::withSpinner(DT::dataTableOutput("pep_contents"),
-                                                             color = "#10B7A3"),
-                                #  actionButton("clear", "Deselect Rows"),
-                                actionButton("pep_original", "Refresh Table"),
-                                actionButton("filter_prot", "Filter by modification"),
                                 width = 6,
-                                height = 980,
-                                status = "success",
-                                #color=""
-                                solidHeader = TRUE
-                              )) # box or column end
+                                collapsible = TRUE,
+                                #status="primary",
+                                #solidHeader=TRUE,
+                                tabBox(
+                                  title = "Result Plots \nProtein Level",
+                                  width = 12,
+                                  tabPanel(title = "Volcano plot",
+                                           
+                                           fluidRow(
+                                             shinycssloaders::withSpinner(
+                                               plotOutput("volcano_sum_prot",
+                                                          height = 600,
+                                                          brush = "protein_brush" # click = "protein_click"
+                                               ), color = "#3c8dbc")
+                                             
+                                           ))))
+                                     
+                              ) # box or column end
          ), # result fluidRow close
         
         ## QC Box
