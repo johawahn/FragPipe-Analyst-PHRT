@@ -879,7 +879,8 @@ server <- function(input, output, session) {
    })
    
    ### Heatmap for differentially expressed proteins
-   heatmap_cluster<-eventReactive({
+   
+  heatmap_cluster<-eventReactive({
      input$analyze
      input$show_row_names
    }, { 
@@ -893,6 +894,7 @@ server <- function(input, output, session) {
      )
      return(heatmap_list)
    })
+
    
    heatmap_input <- reactive({
      heatmap_list <- heatmap_cluster()
@@ -1389,7 +1391,7 @@ server <- function(input, output, session) {
                      Sys.sleep(0.25)
                    }
                  })
-   heatmap_input()
+    heatmap_input()
   })
  
   output$volcano <- renderPlot({
@@ -1453,19 +1455,22 @@ server <- function(input, output, session) {
     shinycssloaders::withSpinner(plotOutput("go_enrichment"), color = "#3c8dbc")
   })
   
+
   observeEvent(input$go_analysis, {
     output$go_enrichment<-renderPlot({
       Sys.sleep(2)
-      null_enrichment_test(go_results())
-      # TODO: if user changes the go_database, it might cause error here
-      plot_go <- plot_enrichment(go_results(), number = 10, alpha = 0.05, contrasts = input$contrast,
+      isolate(null_enrichment_test(go_results(), alpha = 0.05))
+      plot_go <- isolate(plot_enrichment(go_results(), number = 10, alpha = 0.05, contrasts = input$contrast,
                                  databases = as.character(input$go_database), adjust = input$go_adjust,
-                                 use_whole_proteome = input$go_whole_proteome, nrow = 2, term_size = 8)
+                                 use_whole_proteome = input$go_whole_proteome, nrow = 2, term_size = 8))
       return(plot_go)
     })
   })
   
+  
 
+
+  
   output$spinner_pa <- renderUI({
     req(input$pathway_analysis)
     shinycssloaders::withSpinner(plotOutput("pathway_enrichment"), color = "#3c8dbc")
@@ -1474,10 +1479,10 @@ server <- function(input, output, session) {
   observeEvent(input$pathway_analysis, {
     output$pathway_enrichment<-renderPlot({
       Sys.sleep(2)
-      null_enrichment_test(pathway_results())
-      plot_pathway <-plot_enrichment(pathway_results(), number = 10, alpha = 0.05, contrasts =input$contrast_1,
+      isolate(null_enrichment_test(pathway_results(), alpha = 0.05))
+      plot_pathway <-isolate(plot_enrichment(pathway_results(), number = 10, alpha = 0.05, contrasts =input$contrast_1,
                                      databases = as.character(input$pathway_database), adjust = input$path_adjust,
-                                     use_whole_proteome = input$pathway_whole_proteome, nrow = 2, term_size = 8)
+                                     use_whole_proteome = input$pathway_whole_proteome, nrow = 2, term_size = 8))
       return(plot_pathway)
     })
   })
