@@ -68,6 +68,11 @@ test_ora_mod <- function(dep,
   
   
   row_data <- rowData(dep, use.names = FALSE)
+  
+  if (sum(is.na(row_data)) >= 1){
+    row_data <- na.omit(row_data)
+  }
+  
   # Show error if inputs do not contain required columns
   if(any(!c("name", "ID") %in% colnames(row_data))) {
     stop("'name' and/or 'ID' columns are not present in '",
@@ -212,9 +217,11 @@ test_ora_mod <- function(dep,
     cat("Done.")
   }
   
-  df_enrich$p_hyper = phyper(q=(df_enrich$IN-1), m = df_enrich$bg_IN, n = df_enrich$bg_OUT, k = (df_enrich$IN+df_enrich$OUT),
-                             lower.tail = F )
-  df_enrich$p.adjust_hyper = p.adjust(df_enrich$p_hyper, method = "BH")
+  if (nrow(df_enrich) != 0) {
+    df_enrich$p_hyper = phyper(q=(df_enrich$IN-1), m = df_enrich$bg_IN, n = df_enrich$bg_OUT, k = (df_enrich$IN+df_enrich$OUT),
+                               lower.tail = F )
+    df_enrich$p.adjust_hyper = p.adjust(df_enrich$p_hyper, method = "BH")
+  }
   return(df_enrich)
 }
 
@@ -295,7 +302,6 @@ plot_enrichment <- function(gsea_results, number = 10, alpha = 0.05,
     
     gsea_results <- filter(gsea_results, var %in% databases)
   }
-  
   # Get top enriched gene sets
   if (!use_whole_proteome) {
     if (adjust) {

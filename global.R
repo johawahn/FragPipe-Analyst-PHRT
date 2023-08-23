@@ -16,7 +16,7 @@ library("httr")
 library("rjson")
 library("svglite")
 library("ensembldb")
-library(EnsDb.Hsapiens.v86)
+library("EnsDb.Hsapiens.v86")
 library("conflicted")
 library("plotly")
 library("shinyWidgets")
@@ -27,6 +27,11 @@ library("shinycssloaders")
 library("shiny.info")
 library("fastcluster")
 library("factoextra")
+library("pathfindR")
+#library("magick")
+library("UniprotR")
+library("parallel")
+library("Rtsne")
 })
 
 
@@ -38,6 +43,7 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff","base") #Added
 conflict_prefer("intersect", "base") #Added
+conflict_prefer("rename", "dplyr")
 
 source("R/functions.R")
 source("R/volcano_function.R")
@@ -48,3 +54,7 @@ source("R/enrichment_functions.R")
 source("R/filter.R")
 source("R/transform_spectro.R")
 source("R/LFQpep_to_TMTpep.R")
+source("R/quant_matrix_to_frag.R")
+
+
+

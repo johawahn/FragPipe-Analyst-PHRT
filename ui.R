@@ -36,9 +36,10 @@ ui <- function(request){shinyUI(
                      # LFQ (PROTEIN)
                      condition = "input.exp == 'LFQ'",
                      radioButtons("soft_select",
-                                  "Analysis Software",
+                                  "Type of file",
                                   choices = c("Spectronaut"="Spectronaut",
-                                              "FragPipe"="FragPipe"),
+                                              "FragPipe"="FragPipe",
+                                              "Intensity Matrix"="quant_matrix"),
                                   selected = "FragPipe"),
                      
                      conditionalPanel(
@@ -70,14 +71,28 @@ ui <- function(request){shinyUI(
                                           '.csv')),
                      ),
                      
+                     conditionalPanel(
+                       condition = "input.soft_select == 'quant_matrix'",
+                       fileInput('quant_expr', 'Upload intensity_matrix.csv',
+                                 accept=c('text/csv',
+                                          'text/comma-separated-values,text/plain',
+                                          '.csv')),
+                       fileInput('quant_manifest', 'Upload annotation_file.csv',
+                                 accept=c('text/csv',
+                                          'text/comma-separated-values,text/plain',
+                                          '.csv')),
+                     ),
+                     
 
-
-                     radioButtons("lfq_type",
+                     conditionalPanel(
+                       condition = "input.soft_select == 'FragPipe'",
+                       radioButtons("lfq_type",
                                   "Intensity Type",
                                   choices = c("Intensity"="Intensity",
                                               "MaxLFQ Intensity"="MaxLFQ",
                                               "Spectral Count"="Spectral Count"),
-                                              selected = "Intensity"),
+                                              selected = "Intensity")
+                       ),
                      tags$hr(),
                      downloadLink("lfq_example", label="Example LFQ data"),
                      br(),
@@ -161,9 +176,10 @@ ui <- function(request){shinyUI(
                                           '.tsv')),
                        radioButtons("lfq_pept_type",
                                     "Intensity Type",
-                                    choices = c("Intensity"="Intensity",
-                                                "MaxLFQ Intensity"="MaxLFQ",
-                                                "Spectral Count"="Spectral Count"),
+                                    choices = c("Intensity"="Intensity"
+                                    ), # TODO:MaxLFQ and Spectral Count dont work yet
+                                    #            ,"MaxLFQ Intensity"="MaxLFQ",
+                                    #            "Spectral Count"="Spectral Count"),
                                     selected = "Intensity")
                      )),
                    
@@ -234,7 +250,8 @@ ui <- function(request){shinyUI(
       #tags$head(includeHTML(("google_analytics.html"))),
      
       tags$head(
-        tags$link(rel = "stylesheet", type = "text/css", href = "./css/custom.css")
+        tags$link(rel = "stylesheet", type = "text/css", href = "./css/custom.css"),
+        tags$script(src = "./js/customized.js")
       ),
 
       #  Add logo to the body
@@ -249,7 +266,7 @@ ui <- function(request){shinyUI(
                     title = "Overview",
                     width = 12,
                     solidHeader = TRUE,
-                    status = "primary",
+                    status = "success",
                     h3("PHRT-Analyst"),
                     p(HTML(paste0("FragPipe-Analyst is an easy-to-use, interactive web application developed to perform 
                       differential expression analysis with “one click” and to visualize quantitative proteomic datasets analyzed using ",
@@ -408,16 +425,39 @@ ui <- function(request){shinyUI(
                               
                               box(
                                 title = "Results Table",
-                                shinycssloaders::withSpinner(DT::dataTableOutput("contents"),
-                                                             color = "#10B7A3"),
-                                #  actionButton("clear", "Deselect Rows"),
-                                actionButton("original", "Refresh Table"),
-                                width = 6,
-                                height = "auto",
-                                status = "success",
+                                status = "primary",
                                 #color=""
-                                solidHeader = TRUE
-                              ),
+                                solidHeader = TRUE,
+                                conditionalPanel(
+                                  condition = "input.work_select == 'LFQ'",
+                                  fluidRow(
+                                    column(4, textInput(inputId = 'motif_re', label = 'Enter Motif Regex', 
+                                                        value = "")),
+                                    column(4, radioButtons("keep_motif",
+                                                           "Keep/Exclude Motif",
+                                                           choices = c("Keep"="keep", "Exclude"="excl"),
+                                                           inline = T,
+                                                           selected = "excl")),
+                                    column(4, materialSwitch(inputId = "mod_w_motif", 
+                                                             label = "Filter motif only ", 
+                                                             status = "primary",
+                                                             right=TRUE))
+                                    )
+                                  ),
+                                shinycssloaders::withSpinner(DT::dataTableOutput("contents"),
+                                                             color = "pink"),
+                                br(),
+                                fluidRow(
+                                  column(4,actionButton("clear", "Deselect Rows")),
+                                  column(4,actionButton("original", "Refresh Table")),
+                                  column(4,conditionalPanel(
+                                  condition = "input.work_select == 'LFQ'",
+                                  actionButton("filter_motif", "Filter motif")
+                                ))
+                                ),
+                                
+                                
+                                ),
                               # column(
                               box(
                                 width = 6,
@@ -463,13 +503,20 @@ ui <- function(request){shinyUI(
                                                plotOutput("volcano",
                                                           height = 600,
                                                           brush = "protein_brush" # click = "protein_click"
-                                                        ), color = "#3c8dbc"),
+                                                        ), color = "pink"),
                                              downloadButton('downloadVolcano', 'Save Highlighted Plot'),
                                              actionButton("resetPlot", "Clear Selection")
                                            )),
                                   tabPanel(title= "Heatmap",
                                            fluidRow(
-                                             shinycssloaders::withSpinner(plotOutput("heatmap", height = 600), color = "#3c8dbc")
+                                             box(checkboxInput("show_row_names",
+                                                               "Show rownames",
+                                                               value = F),
+                                                 width = 6
+                                             )
+                                           ),
+                                           fluidRow(
+                                             shinycssloaders::withSpinner(plotOutput("heatmap", height = 600), color = "pink")
                                            ),
                                            fluidRow(
                                              # box(numericInput("cluster_number",
@@ -508,7 +555,7 @@ ui <- function(request){shinyUI(
                                              )
                                            ),
                                            fluidRow(
-                                             shinycssloaders::withSpinner(plotlyOutput("protein_plot"), color = "#3c8dbc")
+                                             shinycssloaders::withSpinner(plotlyOutput("protein_plot"), color = "pink")
                                              # downloadButton('downloadProtein', 'Download Plot')
                                              )
                                            )
@@ -517,23 +564,30 @@ ui <- function(request){shinyUI(
                               condition = "input.work_select == 'LFQ'",
                                box(
                                  title = "Protein Results Table",
-                                 shinyjs::useShinyjs(),  # Add this line to enable shinyjs
+                                 status = "primary",
+                                 #color=""
+                                 solidHeader = TRUE,
                                  shinyjs::inlineCSS(
                                    ".dropdown-container { display: flex; justify-content: space-between; align-items: center; }"
                                  ),
-                                 div(
-                                   class = "dropdown-container",
-                                   uiOutput("mod_options")),
+                                 fluidRow(
+                                   column(4, div(
+                                     class = "dropdown-container",
+                                     uiOutput("mod_options"))),
+                                   column(8, radioButtons("keep_mod",
+                                                          "Keep/Exclude Modification",
+                                                          choices = c("Keep"="keep", "Exclude"="excl"),
+                                                          inline = T,
+                                                          selected = "excl"))),
                                  shinycssloaders::withSpinner(DT::dataTableOutput("pep_contents"),
-                                                              color = "#10B7A3"),
-                                 #  actionButton("clear", "Deselect Rows"),
+                                                              color = "pink"),
+                                 br(),
+                                 actionButton("sum_prots_clear", "Deselect Rows"),
                                  actionButton("pep_original", "Refresh Table"),
-                                 actionButton("filter_prot", "Filter by modification"),
+                                 actionButton("filter_mod", "Filter modification(s)"),
                                  width = 6,
-                                 height = "auto",
-                                 status = "success",
-                                 #color=""
-                                 solidHeader = TRUE
+                                 height = "auto"
+                                 
                                ),
                                      # column(
                               box(
@@ -544,14 +598,14 @@ ui <- function(request){shinyUI(
                                 tabBox(
                                   title = "Result Plots \nProtein Level",
                                   width = 12,
-                                  tabPanel(title = "Volcano plot",
-                                           
+                                  tabPanel(title = "Protein Volcano plot",
                                            fluidRow(
                                              shinycssloaders::withSpinner(
                                                plotOutput("volcano_sum_prot",
                                                           height = 600,
-                                                          brush = "protein_brush" # click = "protein_click"
-                                               ), color = "#3c8dbc")
+                                                          brush = "sum_prot_brush" # click = "protein_click"
+                                               ), color = "pink"),
+                                             actionButton("resetPlot", "Clear Selection")
                                              
                                            ))))
                                      
@@ -572,7 +626,7 @@ ui <- function(request){shinyUI(
                                                         "Show scaled version",
                                                         value = T))
                               ),
-                              fluidRow(shinycssloaders::withSpinner(plotlyOutput("pca_plot", height = 600), color = "#3c8dbc"))
+                              fluidRow(shinycssloaders::withSpinner(plotlyOutput("pca_plot", height = 600), color = "pink"))
                               ),
                      tabPanel(title="Sample Correlation",
                               fluidRow(box(checkboxInput("cor_imputed",
@@ -580,7 +634,7 @@ ui <- function(request){shinyUI(
                                                          value = F),
                                            width = 6
                               )),
-                              fluidRow(shinycssloaders::withSpinner(plotOutput("sample_corr", height = 600), color = "#3c8dbc")),
+                              fluidRow(shinycssloaders::withSpinner(plotOutput("sample_corr", height = 600), color = "pink")),
                               fluidRow(downloadButton('download_corr_svg', "Save svg"))
                               ),
                      tabPanel(title= "Sample CVs",
@@ -592,25 +646,33 @@ ui <- function(request){shinyUI(
                                 )
                               ),
                               fluidRow(
-                                shinycssloaders::withSpinner(plotOutput("sample_cvs", height = 600), color = "#3c8dbc")
+                                shinycssloaders::withSpinner(plotOutput("sample_cvs", height = 600), color = "pink")
                               ),
                               fluidRow(
                                 downloadButton('download_cvs_svg', "Save svg")
                               )),
                      tabPanel(title = "Feature Numbers",
-                              shinycssloaders::withSpinner(plotOutput("numbers", height = 600), color = "#3c8dbc"),
+                              shinycssloaders::withSpinner(plotOutput("numbers", height = 600), color = "pink"),
                               downloadButton('download_num_svg', "Save svg")),
                      tabPanel(title = "Sample coverage", value="sample_coverage_tab",
-                              shinycssloaders::withSpinner(plotOutput("coverage", height = 600), color = "#3c8dbc"),
+                              shinycssloaders::withSpinner(plotOutput("coverage", height = 600), color = "pink"),
                               downloadButton('download_cov_svg', "Save svg")),
                      tabPanel(title = "Missing values - Heatmap",
-                              shinycssloaders::withSpinner(plotOutput("missval", height = 600), color = "#3c8dbc"),
+                              shinycssloaders::withSpinner(plotOutput("missval", height = 600), color = "pink"),
                               downloadButton('download_missval_svg', "Save svg")
                               ),
                      tabPanel(title = "Density plot", value="density_tab",
-                              shinycssloaders::withSpinner(plotOutput("density", height = 600), color = "#3c8dbc"),
+                              shinycssloaders::withSpinner(plotOutput("density", height = 600), color = "pink"),
                               downloadButton('download_density_svg', "Save svg")
-                              )
+                              ),
+                     tabPanel(title = "t-SNE Plot", value="tsne_tab", height=800,
+                              fluidRow(
+                                column(6, sliderInput("n_max_iter", "Number of max iterations", min=500,
+                                                      max=2000, step=500, value=1000, width=400)),
+                                column(3, actionButton("run_tsne", "Run t-SNE analysis"))
+                              ),
+                              fluidRow(shinycssloaders::withSpinner(plotOutput("tsne_plot", height = 600), color = "pink"))
+                     )
                      # ,
                      # tabPanel(title = "p-value Histogram",
                      #          plotOutput("p_hist", height = 600)
@@ -619,6 +681,7 @@ ui <- function(request){shinyUI(
           ),
           box(
             width=6,
+            height="auto",
               tabBox(title = "Enrichment", width = 12, height=800,
                      tabPanel(title= "Pathway enrichment",
                               fluidRow(
@@ -695,7 +758,37 @@ ui <- function(request){shinyUI(
                               ),
                               fluidRow(box(width = 12, uiOutput("spinner_go"), height = 500)),
                               fluidRow(column(12, downloadButton('downloadGO', 'Download Table')))
+                              ),
+                     tabPanel(title="Protein-Protein Interaction Network ",
+                                 fluidRow(
+                                   column(4, uiOutput("contrast_2")),
+                                   column(4, selectInput("PIN_database", "Database:",
+                                                         c("KEGG"="KEGG", 
+                                                           "Reactome"="Reactome", 
+                                                           "BioCarta" = "BioCarta",
+                                                           "GO-All"="GO-All", 
+                                                           "GO-BP"="GO-BP", 
+                                                           "GO-CC"="GO-CC", 
+                                                           "GO-MF"="GO-MF")))
+                                   ),
+                                fluidRow(
+                                   column(6, actionButton("PIN_analysis", "Run Analysis"))
+                                 ),
+                                fluidRow(box(width = 12, 
+                                             shinycssloaders::withSpinner(uiOutput("spinner_PIN"), color = "pink"), 
+                                             height = "500")),
+                              fluidRow(
+                                column(1, offset=1, actionButton("previous", "Previous")),
+                                column(1, offset=1, actionButton("next", "Next")),
+                                column(4, offset=1, downloadButton('downloadPIN', 'Download Table')),
+                                column(5, offset=1, downloadButton('downloadPIN_pdf', 'Download images as pdf'))
+                              ),
+                              fluidRow(
+                                tags$p("Note: Images are saved under 'term_visualizations' in the app folder")
                               )
+                                
+                       )
+                     
                      ) # Tab box close
             ) # box end
           ) # fluidrow qc close
@@ -734,7 +827,7 @@ ui <- function(request){shinyUI(
                    column(9,
                           box(width = NULL,
                               title = "Results Table",
-                              shinycssloaders::withSpinner(DT::dataTableOutput("contents_occ"), color = "#3c8dbc"),
+                              shinycssloaders::withSpinner(DT::dataTableOutput("contents_occ"), color = "pink"),
                               downloadButton('download_attendance', 'Download Table'),
                               status = "success",
                               solidHeader = TRUE),
@@ -747,17 +840,22 @@ ui <- function(request){shinyUI(
                                      box(width = 4,id = "con_2", uiOutput("condition_2")),
                                      box(width = 4,id = "con_3", uiOutput("condition_3"))),
                               column(12,
-                                     shinycssloaders::withSpinner(plotOutput("venn_plot"), color = "#3c8dbc")),
+                                     shinycssloaders::withSpinner(plotOutput("venn_plot"), color = "pink")),
                               column(12, downloadButton('download_venn_svg', "Save svg")),
                               status = "success",
                               solidHeader = TRUE)
                    ) # Venn plot column closed
                  ) # fuildRow closed
-              )  # occurrence panel closed
+              ),# occurrence panel closed
+        tabPanel('Drug Prediction',
+                 value = "drug_panel",
+                 br(),
+                 fluidRow()
+                 ) # drug prediction panel closes
             ) # panel_list close
           ) # div close
-      #bookmarkButton()
-        )), #analysis tab close
+        )#bookmarkButton()
+      ), #analysis tab close
       
       tabItem(tabName = "info",
               fluidRow( 
@@ -975,8 +1073,7 @@ ui <- function(request){shinyUI(
         fluidRow(
           tags$div(
             tags$footer(
-              #tags$p("Proteomics & Integrative Bioinformatics Lab at the University of Michigan (P.I. Alexey Nesvizhskii) and the Monash Proteomics & Metabolomics Facility, Monash University (P.I. Ralf Schittenhelm)."),
-              tags$p("Pimped by Patrick"),
+              tags$p("Proteomics & Integrative Bioinformatics Lab at the University of Michigan (P.I. Alexey Nesvizhskii) and the Monash Proteomics & Metabolomics Facility, Monash University (P.I. Ralf Schittenhelm)."),
               align = "left",
               style = "margin-left: 20px;")
               # style = "position:absolute;

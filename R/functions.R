@@ -88,7 +88,7 @@ get_cluster_heatmap <- function(dep, type = c("contrast", "centered"),
                                 alpha = 0.01, lfc = 1,
                                 clustering_distance = c("euclidean", "maximum", "manhattan", "canberra",
                                                         "binary", "minkowski", "pearson", "spearman", "kendall", "gower"),
-                                row_font_size = 6, col_font_size = 10, plot = TRUE, exp="LFQ", ...) {
+                                row_font_size = 6, col_font_size = 10, plot = TRUE, exp="LFQ", show_row_names=F,...) {
   
   # Show error if inputs are not the required classes
   if(is.integer(k)) k <- as.numeric(k)
@@ -164,10 +164,10 @@ get_cluster_heatmap <- function(dep, type = c("contrast", "centered"),
   
   if (nrow(filtered) == 0){
     return(ggplot() +
-      annotate("text", x = 4, y = 25, size=8, label = "No differential expressed genes available for the heatmap") +
-      theme_void())
+             annotate("text", x = 4, y = 25, size=8, label = "No differential expressed genes available for the heatmap") +
+             theme_void())
   }
-
+  
   # Check for missing values
   if(any(is.na(assay(filtered)))) {
     warning("Missing values in '", deparse(substitute(dep)), "'. ",
@@ -252,18 +252,19 @@ get_cluster_heatmap <- function(dep, type = c("contrast", "centered"),
   legend <- ifelse(type == "contrast",
                    "log2 Fold change",
                    "log2 Centered intensity")
-
+  
   # use sample name for the heatmap
   temp <- colData(filtered)
   rownames(temp) <- temp$label
   colnames(df) <- temp[colnames(df), "sample_name"]
-
+  
   # Heatmap
   ht1 = Heatmap(df,
                 col = circlize::colorRamp2(
                   seq(-col_limit, col_limit, (col_limit/5)),
                   rev(RColorBrewer::brewer.pal(11, "RdBu"))),
                 split = if(kmeans) {df_kmeans$cluster} else {NULL},
+                show_row_names = show_row_names,
                 cluster_rows = col_clust,
                 cluster_columns = row_clust,
                 row_names_side = "left",
@@ -660,7 +661,18 @@ get_results_proteins <- function(dep, exp, PEP_LFQ=FALSE) {
     colnames(table)[3] <- c("Gene Name")
     if(PEP_LFQ){colnames(table)[4] <- c("Modified Peptides")}
     
-  }  
+  } else if (exp == "LFQ-peptide") {
+    ids <- as.data.frame(row_data) %>% dplyr::select(ID, name)
+    table <- dplyr::left_join(ids,ratio, by=c("name"="rowname"))
+    table <- dplyr::left_join(table, pval, by = c("name" = "rowname"))
+    table <- as.data.frame(row_data) %>% 
+      dplyr::select(name) %>%
+      dplyr::left_join(table, ., by = "name")
+    table <- table %>% dplyr::arrange(desc(significant))
+    colnames(table)[1] <- c("ProteinID")
+    colnames(table)[2] <- c("Gene")
+    
+  }
   return(table)
 }
 
@@ -707,7 +719,29 @@ delete_prefix <- function(words) {
   gsub(paste0("^", prefix), "", words)
 }
 
-#### ===== Protein to 
+#### ===== plot tsne
+plot_tsne <- function(dep, n_max_iter=1000){
+  perplexity_nbr <- floor(nrow(t(assay(dep)))/3)-1
+  tsne_quant = Rtsne(t(assay(dep)), epoch_callback = NULL, perplexity=perplexity_nbr, max_iter = n_max_iter)
+  
+  print("tsne calculations are done")
+  colors <- rainbow(length(unique(colData(dep)$condition))) #number of colors depends on number of groups
+  groups <- colData(dep)$condition
+  p <- ggplot(as.data.frame(tsne_quant$Y), aes(V1, V2, color = groups)) +
+    geom_point(size = 3, shape = 20) +
+    labs(x = "x", y = "y") +
+    scale_color_manual(values = colors) +
+    theme_minimal()
+  
+  print(p)
+  return(p)
+}
+
+#### ===== Convert PNG images to PDF using pdftools
+images_to_pdf <- function(output_pdf, image_path) {
+  pdf <- pdftools::pdf_data(image_path)
+  pdftools::write_pdf(pdf, output_pdf)
+}
 
 
 

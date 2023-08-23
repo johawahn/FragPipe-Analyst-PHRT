@@ -1,4 +1,5 @@
 #Define server logic to read selected file ----
+
 server <- function(input, output, session) {
 
   
@@ -91,6 +92,9 @@ server <- function(input, output, session) {
          if (input$soft_select == "Spectronaut"){
            inFile <- input$spectro_expr
            exp_design_file <- input$spectro_manifest
+         }else if (input$soft_select == "quant_matrix"){
+           inFile <- input$quant_expr
+           exp_design_file <- input$quant_manifest
          }else{
            # If its FragPipe's LFQ file
           inFile <- input$lfq_expr
@@ -176,6 +180,17 @@ server <- function(input, output, session) {
      }
    })
    
+   output$contrast_2 <- renderUI({
+     print("server.R line 162")
+     if (!is.null(comparisons())) {
+       df <- SummarizedExperiment::rowData(dep())
+       cols <- grep("_significant$",colnames(df))
+       selectizeInput("contrast_2",
+                      "Comparison",
+                      choices = gsub("_significant", "", colnames(df)[cols]))
+     }
+   })
+   
    output$downloadTable <- renderUI({
      if(!is.null(dep())){
      selectizeInput("dataset",
@@ -246,6 +261,8 @@ server <- function(input, output, session) {
         if (input$soft_select == "Spectronaut"){
           inFile <- input$spectro_expr
           annotation <- input$spectro_manifest
+        }else if (input$soft_select == "quant_matrix"){
+          inFile <- input$quant_expr
         }else{
           inFile <- input$lfq_expr
         }
@@ -278,9 +295,18 @@ server <- function(input, output, session) {
         temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
         temp_data <- as.data.frame(temp[[1]])
         
-        #print("##################### QUANT #######################")
-        #print(head(temp_data))
-        #print("#####################################################")
+        print("##################### QUANT #######################")
+        print(head(temp_data))
+        print("#####################################################")
+        
+        
+      } else if (input$soft_select == "quant_matrix"){
+        temp_data_quant <-  read.csv(inFile$datapath,
+                                     header = TRUE)
+        
+        
+        
+        temp_data <- expr_to_frag_input(temp_data_quant)
         
         
       } else if (input$work_select == 'LFQ'){
@@ -312,6 +338,7 @@ server <- function(input, output, session) {
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
         validate(fragpipe_input_test(temp_data))
         print('server.R line 307')
+        print(head(temp_data))
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "DIA"){ # DIA
@@ -356,6 +383,9 @@ server <- function(input, output, session) {
         if(input$soft_select == "Spectronaut"){
           inFile <- input$spectro_manifest
           quant <-  input$spectro_expr
+        }else if(input$soft_select == "quant_matrix"){
+          inFile <- input$quant_manifest
+          quant <-  input$quant_expr
         }else
           inFile <- input$lfq_manifest
         print('server.R line 355')
@@ -427,15 +457,26 @@ server <- function(input, output, session) {
           print('Tweak line 404')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
-                                       sep=input$spectro_sep_quant)
+                                       sep=input$spectro_sep_anp)
           
           temp_data_expr <-  read.csv(quant$datapath,
                                        header = TRUE, 
-                                       sep=input$spectro_sep_ano)
+                                       sep=input$spectro_sep_quant)
           
           
           temp <- spectronaut_to_fragpipe(temp_data_expr, temp_data_annot)
           temp_df <- as.data.frame(temp[[2]])
+          
+        }else if (input$soft_select == "quant_matrix"){
+          print('Tweak line 404')
+          temp_data_annot <-  read.csv(inFile$datapath,
+                                       header = TRUE)
+
+          temp_data_expr <-  read.csv(quant$datapath,
+                                      header = TRUE)
+          
+          
+          temp_df <- expr_manifest_to_frag_ano(temp_data_annot, temp_data_expr)
           
         }else{
           print("server line 430")
@@ -445,7 +486,7 @@ server <- function(input, output, session) {
                                 stringsAsFactors = FALSE)
           
           print("##################### ANO #######################")
-          #print(head(temp_df))
+          print(head(temp_df))
           print("#####################################################")
         }
         
@@ -573,7 +614,7 @@ server <- function(input, output, session) {
        cols <- colnames(data_unique)
        selected_cols <- which(!(cols %in% c("Protein.Group", "Protein.Ids", "Protein.Names", "Genes", "First.Protein.Description", "ID", "name")))
        test_match_DIA_column_design(data_unique, selected_cols, exp_design())
-       data_se <- make_se_customized(data_unique, selected_cols, exp_design(), log2transform=T, exp="DIA")
+       data_se <- make_se_customized(data_unique, selected_cols, exp_design(), log2transform=T, exp="DIA", level="protein")
        dimnames(data_se) <- list(dimnames(data_se)[[1]], colData(data_se)$sample_name)
        colData(data_se)$label <- colData(data_se)$sample_name
        return(data_se)
@@ -633,8 +674,15 @@ server <- function(input, output, session) {
        cols <- colnames(data_unique)
        selected_cols <- which(!(cols %in% interest_cols))
        test_match_tmt_column_design(data_unique, selected_cols, temp_exp_design)
-       # TMT-I report is already log2 transformed
-       data_se <- make_se_customized(data_unique, selected_cols, temp_exp_design, exp="TMT", level="peptide")
+       if (input$work_select == "LFQ"){
+         # TMT-I report is already log2 transformed
+       data_se <- make_se_customized(data_unique, selected_cols, log2transform=T, temp_exp_design, exp="TMT", 
+                                     level="peptide")
+       } else {
+         # TMT-I report is already log2 transformed
+         data_se <- make_se_customized(data_unique, selected_cols, temp_exp_design, exp="TMT", level="peptide")
+       }
+       
      
        return(data_se)
      }
@@ -791,7 +839,7 @@ server <- function(input, output, session) {
      }
      result_se <- add_rejections_customized(diff_all, alpha = input$p, lfc= input$lfc)
      print("######## result_se line 837 ##############")
-
+      
      return(result_se)
    })
    
@@ -970,6 +1018,7 @@ server <- function(input, output, session) {
                                      point.padding = unit(0.1, 'lines'),
                                      segment.size = 0.5, 
                                      max.overlaps = Inf)# use the dataframe to plot points
+
         } else {
           df_protein <- data.frame(x = proteins_selected[, diff_proteins],
                           y = -log10(as.numeric(proteins_selected[, padj_proteins])),#)#,
@@ -1010,9 +1059,9 @@ server <- function(input, output, session) {
       }
       if (input$exp == "TMT" & metadata(data)$level == "protein") {
         protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
-      } else if (input$exp == "TMT-peptide" & input$all_peps_prot){
-        protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
-        protein_selected <- data_result()[which(data_result()["Protein ID"] == protein_selected), c("Index")] 
+      } else if (input$exp == "TMT-peptide" & input$all_peps_prot){ # All the precursors from tghe same protein are highlighted
+        prot_group <- data_result()[input$contents_rows_selected, c("Protein ID")]
+        protein_selected <- data_result()[which(data_result()["Protein ID"] == prot_group), c("Index")]
       } else if (input$exp == "TMT-peptide" & !input$all_peps_prot) {
         protein_selected <- data_result()[input$contents_rows_selected, c("Index")]
       } else {
@@ -1026,7 +1075,8 @@ server <- function(input, output, session) {
         return(protein_plot + scale_color_brewer(palette = "Paired"))
       }
     })
-     
+    
+
    ## QC plots inputs
    missval_input <- reactive({
      plot_missval_customized(filtered_data())
@@ -1106,6 +1156,12 @@ server <- function(input, output, session) {
      normalised_data() %>% nrow()
    })
    
+   tsne_input <- eventReactive(input$run_tsne,{
+     return(plot_tsne(dep(), input$n_max_iter))
+   })
+   
+   
+   
    ## Enrichment inputs
    go_results <-eventReactive(input$go_analysis,{
      progress_indicator('Gene ontology enrichment is running....')
@@ -1149,18 +1205,19 @@ server <- function(input, output, session) {
      else{get_results_proteins(dep(), input$exp)}}
      )
    
-
+    # Obtain protein level table from peptide level LFQ report
     data_result_pep <- eventReactive(input$analyze, {
-      as.data.frame(assay(dep())) %>% 
+      if(input$work_select=='LFQ'){as.data.frame(assay(dep())) %>% 
            mutate(across(.cols = where(is.numeric), ~replace_na(., 0))) %>%
            mutate(ProteinID = rowData(dep())$ProteinID) %>%
            mutate(Gene = rowData(dep())$Gene) %>%
            group_by(ProteinID, Gene) %>%
-           summarise(across(.cols = where(is.numeric), .fns = sum))
+           summarise(across(.cols = where(is.numeric), .fns = sum))}
     })
-
+    
+    #Protein level (LFQ-peptide) experimental design
     exp_design <- eventReactive(input$analyze, {
-      exp_design_input() %>%
+      if(input$work_select=='LFQ'){exp_design_input() %>%
         mutate(condition = make.names(exp_design_input()$condition)) %>%
         mutate(sample = gsub("-", ".", exp_design_input()$sample)) %>%
         mutate(label = exp_design_input()$sample) %>%
@@ -1171,9 +1228,10 @@ server <- function(input, output, session) {
             input$lfq_type == "Spectral Count" ~ "Spectral.Count"
           )
           paste(., lfq_column_suffix, sep = " ")
-        })
+        })}
     })
-
+    
+    #Summarized experiment object for protein level (LFQ-peptide)
     result_se_sum_prot <- eventReactive(input$analyze, {
       if(input$work_select=='LFQ'){
         as.data.frame(data_result_pep()) %>%
@@ -1195,7 +1253,14 @@ server <- function(input, output, session) {
           add_rejections_customized(alpha = input$p, lfc = input$lfc)
     }})
     
-    observeEvent(input$work_select,
+    # Result table for protein level (LFQ-peptide)
+    data_result_pep_prot_level <- eventReactive(input$analyze, {
+      if(input$work_select=='LFQ'){
+        get_results_proteins(result_se_sum_prot(), "LFQ-peptide")
+      }})
+    
+    # Plot reactive volcano 
+    observeEvent(input$analyze,
                  {if(input$work_select=='LFQ'){
                   
                    volcano_input_sum_prot <- reactive({
@@ -1210,6 +1275,46 @@ server <- function(input, output, session) {
                      }
                    })
                    
+                   volcano_input_sum_prot_selected<-reactive({
+                     if(!is.null(input$volcano_cntrst)){
+                       if (!is.null(input$pep_contents_rows_selected)){
+                         proteins_sum_prot_selected <- data_result_pep_prot_level()[c(input$pep_contents_rows_selected),]
+                       }
+                       
+                       diff_proteins <- grep(paste("^",input$volcano_cntrst, "_log2", sep = ""),
+                                             colnames(proteins_sum_prot_selected))
+                       
+                       if(input$p_adj=="FALSE"){
+                         padj_proteins <- grep(paste("^",input$volcano_cntrst, "_p.val", sep = ""),
+                                               colnames(proteins_sum_prot_selected))
+                       } else {
+                         padj_proteins <- grep(paste("^",input$volcano_cntrst, "_p.adj", sep = ""),
+                                               colnames(proteins_sum_prot_selected))
+                       }
+                       
+                       df_sum_prots <- data.frame(x = proteins_sum_prot_selected[, diff_proteins],
+                                                  y = -log10(as.numeric(proteins_sum_prot_selected[, padj_proteins])),
+                                                  name = proteins_sum_prot_selected$`Gene`,
+                                                  proteinID = proteins_sum_prot_selected$`ProteinID`)
+                       
+                       p <- plot_volcano_new(result_se_sum_prot(),
+                                             input$volcano_cntrst,
+                                             input$fontsize,
+                                             input$check_names,
+                                             input$p_adj)
+                       
+                       p <- p + geom_point(data = df_sum_prots, aes(x, y), color = "maroon2", size= 3) +
+                         ggrepel::geom_text_repel(data = df_sum_prots,
+                                                  color = "maroon2",
+                                                  aes(x, y, label = name),
+                                                  size = 4,
+                                                  box.padding = unit(0.1, 'lines'),
+                                                  point.padding = unit(0.1, 'lines'),
+                                                  segment.size = 0.5)
+                       
+                       return(p)
+                       }})
+                   
                    output$volcano_sum_prot <- renderPlot({
                      withProgress(message = 'Volcano plot calculations are in progress',
                                   detail = 'Please wait for a while', value = 0, {
@@ -1218,8 +1323,13 @@ server <- function(input, output, session) {
                                       Sys.sleep(0.25)
                                     }
                                   })
+                     if(is.null(input$pep_contents_rows_selected)){
+                       volcano_input_sum_prot()
+                     } else if(!is.null(input$volcano_cntrst)){
+                      #} else if(FALSE){ #Selecting rows in the second table doesnt work yet
+                       volcano_input_sum_prot_selected()
+                     }# else close
                      
-                     volcano_input_sum_prot()
                      
                      
                    })
@@ -1237,6 +1347,9 @@ server <- function(input, output, session) {
                     columnDefs= list(list(width = '400px', targets = c(-1))),
                     lengthMenu = c(10, 20)))
    
+   ################################################
+   ########### FILTERING OPTIONS ##################
+   ################################################
    ## Deselect all rows button
    proxy <- dataTableProxy("contents")
    
@@ -1256,7 +1369,7 @@ server <- function(input, output, session) {
      )
    })
    
-   
+   # Plot volcano of summed proteins table
    observeEvent(input$work_select,
                 {if(input$work_select=='LFQ'){
                   output$mod_options <- renderUI({
@@ -1270,8 +1383,7 @@ server <- function(input, output, session) {
                   })
                   
                   output$pep_contents <- DT::renderDataTable({
-                    df<- data_result_pep()
-                    print(head(df))
+                    df<- data_result_pep_prot_level()
                     return(df)
                   },
                   options = list(scrollX = TRUE,
@@ -1279,15 +1391,15 @@ server <- function(input, output, session) {
                                  columnDefs= list(list(width = '400px', targets = c(1))),
                                  lengthMenu = c(10, 20)))
                   ## Deselect all rows button
-                  proxy <- dataTableProxy("pep_contents")
+                  sum_prots_proxy <- dataTableProxy("pep_contents")
                   
-                  observeEvent(input$clear,{
-                    proxy %>% selectRows(NULL)
+                  observeEvent(input$sum_prots_clear,{
+                    sum_prots_proxy %>% selectRows(NULL)
                   })
                   
                   observeEvent(input$pep_original,{
                     output$pep_contents <- DT::renderDataTable({
-                      df<- data_result_pep()
+                      df<- data_result_pep_prot_level()
                       return(df)
                     },
                     options = list(scrollX = TRUE,
@@ -1301,17 +1413,30 @@ server <- function(input, output, session) {
 
                 }})
    
-   observeEvent(input$mods_in_data,{print(input$mods_in_data)})
-   
-   ## Filter results table by mod
-   proxy_peps_mod <- dataTableProxy("contents")
-   
-   
-   observeEvent(input$filter_prot,{
+
+#### FILTERING OUT MODIFICATIONS   
+   data_result_mods <- eventReactive(input$filter_mod, {
      idx <- grep(paste0(str_replace_all(input$mods_in_data, "[\\[\\].]", "\\\\\\0"), 
                         collapse="|"), data_result()$`Modified Peptides`)
+     if (input$keep_mod == "excl"){
+       idx <- idx*-1
+     }
+     return(data_result()[idx,])
+   })
+   
+   
+   data_result_pep_mods <- eventReactive(input$filter_mod, {
+     idx_prots <- which(data_result_pep_prot_level()$`ProteinID` %in% unique(data_result_mods()$`Protein ID`))
+     if (input$keep_motif == "excl"){
+       idx_prots <- idx_prots*-1
+     }
+     return(data_result_pep_prot_level()[idx_prots,])
+   })
+   
+   #Keep only the modifications
+   observeEvent(input$filter_mod,{
      output$contents <- DT::renderDataTable({
-       df<- data_result()[idx,]
+       df<- data_result_mods()
        return(df)
      },
      options = list(scrollX = TRUE,
@@ -1319,11 +1444,8 @@ server <- function(input, output, session) {
                     columnDefs= list(list(width = '400px', targets = c(-1))),
                     lengthMenu = c(10, 20)))
      
-     
-     idx_prots <- which(data_result_pep()$`ProteinID` %in% unique(data_result()[idx,"Protein ID"]))
-     
      output$pep_contents <- DT::renderDataTable({
-       df<- data_result_pep()[idx_prots,]
+       df<- data_result_pep_mods()
        return(df)
      },
      options = list(scrollX = TRUE,
@@ -1331,10 +1453,48 @@ server <- function(input, output, session) {
                     columnDefs= list(list(width = '400px', targets = c(-1))),
                     lengthMenu = c(10, 20)))
      })
-
    
+##### FILTERING OUT MOTIFS
 
- 
+   observeEvent(input$filter_motif,{
+     
+     if(!input$mod_w_motif){
+       data_table <- data_result_mods()
+     } else {
+       data_table <- data_result()
+     }
+     idx <- str_detect(data_table$`Index`, input$motif_re)
+     
+     if(input$keep_motif == 'excl'){
+       idx <- idx*-1
+     }
+     output$contents <- DT::renderDataTable({
+       df<- data_table[idx,]
+       return(df)
+     },
+     options = list(scrollX = TRUE,
+                    autoWidth=TRUE,
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20)))
+   })
+   
+   observeEvent(input$excl_motif,{
+     if(exists("data_result_mods()") | !is.null(data_result_mods())){
+       data_table <- data_result_mods()
+     } else {
+       data_table <- data_result()
+     }
+     
+     idx <- str_detect(data_table$`Index`, input$motif_re)
+     output$contents <- DT::renderDataTable({
+       df<- data_table[-idx,]
+       return(df)
+     },
+     options = list(scrollX = TRUE,
+                    autoWidth=TRUE,
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20)))
+   })
   protein_name_brush<- reactive({
     if (input$p_adj) {
       yvar <- "adjusted_p_value_-log10"
@@ -1449,10 +1609,14 @@ server <- function(input, output, session) {
     coverage_input()
   })
   
+  output$tsne_plot <- renderPlot({
+    tsne_input()
+  })
+  
   ## Enrichment Outputs
   output$spinner_go <- renderUI({
     req(input$go_analysis)
-    shinycssloaders::withSpinner(plotOutput("go_enrichment"), color = "#3c8dbc")
+    shinycssloaders::withSpinner(plotOutput("go_enrichment"), color = "#f7aaec")
   })
   
 
@@ -1473,19 +1637,94 @@ server <- function(input, output, session) {
   
   output$spinner_pa <- renderUI({
     req(input$pathway_analysis)
-    shinycssloaders::withSpinner(plotOutput("pathway_enrichment"), color = "#3c8dbc")
+    shinycssloaders::withSpinner(plotOutput("pathway_enrichment"), color = "#f7aaec")
   })
   
   observeEvent(input$pathway_analysis, {
     output$pathway_enrichment<-renderPlot({
       Sys.sleep(2)
-      isolate(null_enrichment_test(pathway_results(), alpha = 0.05))
-      plot_pathway <-isolate(plot_enrichment(pathway_results(), number = 10, alpha = 0.05, contrasts =input$contrast_1,
+       plot_pathway <-isolate(plot_enrichment(pathway_results(), number = 10, alpha = 0.05, contrasts =input$contrast_1,
                                      databases = as.character(input$pathway_database), adjust = input$path_adjust,
                                      use_whole_proteome = input$pathway_whole_proteome, nrow = 2, term_size = 8))
       return(plot_pathway)
     })
   })
+  
+  ## Enrichment inputs
+    'PIN_results <-eventReactive(input$PIN_analysis,{
+     #withProgress(message = "Heatmap rendering is in progress",
+                   detail = "Please wait for a while", value = 0, {
+                     for (i in 1:20) {
+                       incProgress(1/15)
+                       Sys.sleep(0.25)
+                     }
+                   })
+      
+    if(!is.null(input$contrast_2)){
+      contrast <- input$contrast_2
+      print(contrast)
+      table <- data_result()
+      
+      pathfindR_input_df <- drop_na(table)
+      print(head(pathfindR_input_df))
+      pathfindR_input_df <- table[c(colnames(table)[grep("Gene", colnames(table))],
+                                    paste0(contrast, "_log2 fold change"),
+                                    paste0(contrast, "_p.val"))]
+      
+      colnames(pathfindR_input_df) <- c("Gene.symbol", "logFC", "adj.P.Val")
+      
+      input_processed <- input_processing(
+        input = pathfindR_input_df, # the input: in this case, differential expression results
+        p_val_threshold = 0.05, # p value threshold to filter significant genes
+        pin_name_path = "Biogrid", # the name of the PIN to use for active subnetwork search
+        convert2alias = TRUE # boolean indicating whether or not to convert missing symbols to alias symbols in the PIN
+      )
+      output <- NULL
+      withProgress(message="Performing Active Subnetwork Search", 
+                   detail = "This might take a while...", {
+                     output <- run_pathfindR(pathfindR_input_df,
+                                             gene_sets=input$PIN_database)
+                   })
+      
+      
+      if (!is.null(output)){
+        withProgress(message="Visualizing Active Subnetwork",{
+          visualize_terms(output, input_processed)})
+      }
+      return(output)
+    }
+  })'
+
+
+
+  PIN_analysis <- eventReactive(input$PIN_analysis, {
+    #req(PIN_results())
+    list.files("term_visualizations/", pattern=".png", full.names = TRUE)})
+    
+  output$spinner_PIN <- renderUI({
+    #req(PIN_results())
+    req(input$PIN_analysis)
+    shinycssloaders::withSpinner(plotOutput("PIN_enrichment"), color = "#f7aaec")
+  })
+  
+  
+  index <- reactiveVal(1)
+  
+  observeEvent(input[["previous"]], {
+    index(max(index()-1, 1))
+  })
+  observeEvent(input[["next"]], {
+    index(min(index()+1, length(PIN_analysis())))
+  })
+  
+  
+  observeEvent(input$PIN_analysis, {
+    output$PIN_enrichment<-renderImage({
+      x <- PIN_analysis()[index()] 
+      list(src = x, alt = "NO ENRICHED PATHWAY!", height = "500")
+    }, deleteFile = FALSE)
+  })
+
   
   ##### Download Functions
   # example data
@@ -1603,6 +1842,26 @@ server <- function(input, output, session) {
                   col.names = TRUE,
                   row.names = FALSE,
                   sep =",") }
+  )
+  
+  ###### ==== DOWNLOAD PIN TABLE ==== ####
+  output$downloadPIN <- downloadHandler(
+    filename = function() { paste("PIN_enrichment_",input$PIN_database, ".csv", sep = "") }, ## use = instead of <-
+    content = function(file) {
+      write.table(PIN_results(),
+                  file,
+                  col.names = TRUE,
+                  row.names = FALSE,
+                  sep =",") }
+  )
+  
+  output$downloadPIN_pdf <- downloadHandler(
+    filename = function() { 
+      paste("PIN_enrichment_",input$PIN_database, ".pdf", sep = "") }, ## use = instead of <-
+    content = function(file) {
+      images <- lapply(PIN_analysis(), image_read)
+      image_convert(images, file)
+      }
   )
   
   ###### ==== DOWNLOAD PATHWAY TABLE ==== ####
