@@ -2,7 +2,7 @@
 VERSION <- "v0.25"
 
 ENABLE_PEPTIDE_ANALYSIS <- T
-
+DRUG_PREDICTION_ANALYSIS <- T
 
 if (ENABLE_PEPTIDE_ANALYSIS) {
   #analysis_options <- c("LFQ"="LFQ", "LFQ (peptide)"="LFQ-peptide", 
@@ -11,6 +11,24 @@ if (ENABLE_PEPTIDE_ANALYSIS) {
                         "DIA"="DIA", "Peptide"="TMT-peptide")
 } else {
   analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA")
+}
+
+if (DRUG_PREDICTION_ANALYSIS){
+  make_dict <- function(v){
+    names_long <- v
+    v <- make.names(v)
+    names(v) <- names_long
+    return(v)
+  }
+  
+  gene_categories_options <- make_dict(unlist(lapply(strsplit(read_file("drug_prediction_DGIdb/gene_categories_list.txt"), ","), 
+                                           function(x) {gsub("[\r\n]", "", x)})))
+  interaction_sources_options <- make_dict(unlist(lapply(strsplit(read_file("drug_prediction_DGIdb/interaction_sources_list.txt"), ","), 
+                                               function(x) {gsub("[\r\n]", "", x)})))
+  interaction_type_options <- make_dict(unlist(lapply(strsplit(read_file("drug_prediction_DGIdb/interaction_types_list.txt"), ","), 
+                                            function(x) {gsub("[\r\n]", "", x)})))
+  source_trust_level_options <- make_dict(unlist(lapply(strsplit(read_file("drug_prediction_DGIdb/source_trust_level_list.txt"), ","), 
+                                              function(x) {gsub("[\r\n]", "", x)})))
 }
 
 sep_options <- c("comma" = ",", "tab" = "\t")
@@ -833,7 +851,7 @@ ui <- function(request){shinyUI(
                               solidHeader = TRUE),
                           box(width = NULL,
                               title = "Venn Plot",
-                              tags$p('Select conditions/groups to generate the Venn plot. By default, more than three conditions/groups generates a 3D Venn plot,
+                              tags$li('Select conditions/groups to generate the Venn plot. By default, more than three conditions/groups generates a 3D Venn plot,
                                             set Condition 3 as "NONE" to generate a 2D Venn plot'),
                               column(12,
                                      box(width = 4,id = "con_1",uiOutput("condition_1")),
@@ -850,8 +868,121 @@ ui <- function(request){shinyUI(
         tabPanel('Drug Prediction',
                  value = "drug_panel",
                  br(),
-                 fluidRow()
-                 ) # drug prediction panel closes
+                 fluidRow(tags$style(
+                   ".box {
+                                 border-top: none;
+                                 box-shadow: 0 0px 0px rgb(0 0 0 / 10%);
+                                 }"
+                 ),
+                 column(3,
+                        box(width =NULL,
+                            title = "Query Parameters",
+                            tags$p("Filtering of information on drug-gene interactions using the ", 
+                                   tags$a(href="https://www.dgidb.org/", target="_blank", 
+                                          "the Drug Gene Interaction Database."), 
+                                   tags$b("Select the genes in the Results Table to investigate!")),
+                            tags$hr(),
+                            div(id = "dgidb_parameters",
+                                tags$h4("DGIdb Query Parameters"),
+                                fluidRow(
+                                  column(6, selectInput(
+                                    inputId = "gene_categories",
+                                    label = "Gene Categories:",
+                                    choices = gene_categories_options,
+                                    multiple = TRUE
+                                  )),
+                                  column(6, selectInput(
+                                    inputId = "interaction_sources",
+                                    label = "Interaction Sources:",
+                                    choices = interaction_sources_options,
+                                    multiple = TRUE
+                                  ))
+                                ),
+                                fluidRow(
+                                  column(6, selectInput(
+                                    inputId = "interaction_type",
+                                    label = "Interaction Type:",
+                                    choices = interaction_type_options,
+                                    multiple = TRUE
+                                  )),
+                                  column(6, selectInput(
+                                    inputId = "source_trust",
+                                    label = "Source Trust Level:",
+                                    choices = source_trust_level_options,
+                                    multiple = TRUE
+                                  ))
+                                ),
+                            ),
+                            div(shinyWidgets::prettyCheckboxGroup("antineoplastic_only",
+                                                                  label = "Drug Type",
+                                                                  choices = c('Antineoplastic Only'),
+                                                                  shape = "round",
+                                                                  selected = FALSE)
+                            ),
+                            div(shinyWidgets::prettyCheckboxGroup("query_significant_only",
+                                                                  label = "Filter Genes",
+                                                                  choices = c('Significant Only'='query_sig_only',
+                                                                              'Surface Only'='query_surfy_only'),
+                                                                  shape = "round",
+                                                                  selected = FALSE)
+                            ),
+                            tags$hr(),
+                            div(actionButton("load_query", "Load Query"),),
+                            status = "success",
+                            solidHeader = TRUE)), # Column of query options
+                 column(9,
+                        box(width = NULL,
+                            title = "Query Results Table",
+                            shinycssloaders::withSpinner(DT::dataTableOutput("query_dgidb"), color = "pink"),
+                            downloadButton('download_results_dgidb', 'Download Table'),
+                            status = "success",
+                            solidHeader = TRUE)) #column of results table
+                 ), # slider bar column closed)
+                 ),# drug prediction panel closes
+        tabPanel('Protter Visualization',
+                 value = "protter_panel",
+                 br(),
+                 fluidRow(tags$style(
+                   ".box {
+                                 border-top: none;
+                                 box-shadow: 0 0px 0px rgb(0 0 0 / 10%);
+                                 }"
+                 ),
+                 column(3,
+                        box(width =NULL,
+                            title = "Query Parameters",
+                            tags$p(tags$a(href="http://wlab.ethz.ch/protter/", target="_blank", 
+                                          "Protter"), 
+                                   "is a tool for visualization of proteoforms with annotated and predicted sequence",
+                                   tags$b(" Select a protein from the Results Table."), 
+                                   "If multiple proteins are selected, the first one will be visualized."),
+                            
+                            tags$hr(),
+                            div(id = "dgidb_parameters",
+                                tags$h4("Annotations"),
+                                div(shinyWidgets::prettyCheckboxGroup("annotations_options",
+                                                                      label = "Select one or multiple:",
+                                                                      choices = c('PTMs'='ptms',
+                                                                                  'Variants'='variants',
+                                                                                  'Disulfide Bonds'='disulf_bonds',
+                                                                                  'Signal Peptide'='signal_pep'),
+                                                                      shape = "round",
+                                                                      selected = FALSE)
+                              ),
+            
+                              tags$hr(),
+                              div(actionButton("load_query_protter", "Load Query"),),
+                              status = "success",
+                              solidHeader = TRUE))), # Column of query options
+                 column(9,
+                        box(width = NULL,
+                            title = "Protter Result",
+                            shinycssloaders::withSpinner(plotOutput("query_protter", height = "900"), color = "pink"),
+                           downloadButton('download_protter_img', 'Download Image'),
+                            status = "success",
+                           solidHeader = TRUE)) #column of results table
+                 ), # slider bar column closed)
+        ) # Protter tab closes
             ) # panel_list close
           ) # div close
         )#bookmarkButton()

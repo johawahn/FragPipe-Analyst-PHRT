@@ -28,10 +28,12 @@ library("shiny.info")
 library("fastcluster")
 library("factoextra")
 library("pathfindR")
-#library("magick")
+library("magick")
 library("UniprotR")
 library("parallel")
 library("Rtsne")
+library("readr")
+library("grid")
 })
 
 
@@ -44,8 +46,9 @@ conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff","base") #Added
 conflict_prefer("intersect", "base") #Added
 conflict_prefer("rename", "dplyr")
+conflict_prefer("content", "httr")
 
-source("R/functions.R")
+# source("R/functions.R")
 source("R/volcano_function.R")
 source("R/customized.R")
 source("R/tests.R")
@@ -55,6 +58,13 @@ source("R/filter.R")
 source("R/transform_spectro.R")
 source("R/LFQpep_to_TMTpep.R")
 source("R/quant_matrix_to_frag.R")
+source("R/script_protter.R")
+
+library("reticulate")
+############# CHANGE THIS TO THE ENVIRONMENT THAT YOU WANT ##########################
+######### ONE THAT HAS REQUESTS AND NUMPY ######################################3
+use_condaenv(condaenv = "/local/home/usr/anaconda3")
+source_python('python/drug_prediction.py')
 
 
 

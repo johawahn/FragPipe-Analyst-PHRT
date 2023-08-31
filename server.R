@@ -1,5 +1,6 @@
 #Define server logic to read selected file ----
 
+
 server <- function(input, output, session) {
 
   
@@ -1651,8 +1652,15 @@ server <- function(input, output, session) {
   })
   
   ## Enrichment inputs
-    'PIN_results <-eventReactive(input$PIN_analysis,{
-     #withProgress(message = "Heatmap rendering is in progress",
+  
+    PIN_output_name <- eventReactive(input$PIN_analysis, {
+      print(1)
+      make.names(paste0("pathfindr_output_",substr(Sys.time(),1,16)))  
+    })
+    
+    PIN_results <-eventReactive(PIN_output_name(),{
+      print(2)
+     withProgress(message = "PIN rendering is in progress",
                    detail = "Please wait for a while", value = 0, {
                      for (i in 1:20) {
                        incProgress(1/15)
@@ -1666,7 +1674,6 @@ server <- function(input, output, session) {
       table <- data_result()
       
       pathfindR_input_df <- drop_na(table)
-      print(head(pathfindR_input_df))
       pathfindR_input_df <- table[c(colnames(table)[grep("Gene", colnames(table))],
                                     paste0(contrast, "_log2 fold change"),
                                     paste0(contrast, "_p.val"))]
@@ -1675,7 +1682,7 @@ server <- function(input, output, session) {
       
       input_processed <- input_processing(
         input = pathfindR_input_df, # the input: in this case, differential expression results
-        p_val_threshold = 0.05, # p value threshold to filter significant genes
+        p_val_threshold = 0.01, # p value threshold to filter significant genes
         pin_name_path = "Biogrid", # the name of the PIN to use for active subnetwork search
         convert2alias = TRUE # boolean indicating whether or not to convert missing symbols to alias symbols in the PIN
       )
@@ -1693,13 +1700,16 @@ server <- function(input, output, session) {
       }
       return(output)
     }
-  })'
+  })
 
 
 
-  PIN_analysis <- eventReactive(input$PIN_analysis, {
+  PIN_analysis <- eventReactive(PIN_results(), {
+    print(3)
     #req(PIN_results())
-    list.files("term_visualizations/", pattern=".png", full.names = TRUE)})
+    file.rename("term_visualizations", as.character(PIN_output_name()))
+    list.files(as.character(PIN_output_name()), pattern=".png", full.names = TRUE)})
+    #list.files("term_visualizations", pattern=".png", full.names = TRUE)})
     
   output$spinner_PIN <- renderUI({
     #req(PIN_results())
@@ -2000,6 +2010,7 @@ output$download_density_svg<-downloadHandler(
   }
 )
 
+
   #### Occurrence page logic ####
   # data_attendance<-eventReactive(start_analysis(),{
   data_attendance <- reactive({
@@ -2107,6 +2118,106 @@ output$download_density_svg<-downloadHandler(
     }
     return(data)
   })
+  
+  #### Drug Prediction page ####
+  data_loaded <- reactiveVal(FALSE)
+  
+  observeEvent(input$load_query, {
+    data_loaded(TRUE)
+  })
+  
+  input_query_dgidb <- eventReactive(input$load_query, {
+    error_df <- data.frame(gene_name=c(""),drug_name=c(""),interaction_type=c(""),source=c(""),gene_categories=c(""))
+    if ( 'query_sig_only' %in% input$query_significant_only){
+      gene_names = data_result()[which(data_result()$significant), "Gene Name"]
+    } else {
+      if (is.null(input$contents_rows_selected)){
+        return(error_df)
+      }
+      gene_names = data_result()[c(input$contents_rows_selected), "Gene Name"]
+    }
+    
+    if ('query_surfy_only' %in% input$query_significant_only){
+      surface_genes <- unlist(as.vector(read.table("drug_prediction_DGIdb/surfaceome_ids_Aug_2023.tsv",header=T)[2]))
+      gene_names = gene_names[which(gene_names %in% surface_genes)]
+    }
+    
+    if (length(gene_names) == 0){return(error_df)}
+    #example_names = c('FLT3','EGFR','KRAS')
+    
+    query <- DGIAPI(genes = gene_names, interaction_sources = input$interaction_sources,
+                    interaction_types = input$interaction_type, gene_categories = input$gene_categories, 
+                    source_trust_levels = input$source_trust, antineoplastic_only = input$antineoplastic_only)
+    result <- query$run_workflow()
+    
+    if (is.null(result)) {
+      df <- error_df
+    } else {
+      df <- as.data.frame(do.call(rbind, result))
+      print(df)
+    }
+    return(df)
+  })
+  
+  # Render Drug Prediction Table
+  output$query_dgidb <- DT::renderDataTable({
+    if (!data_loaded()) {
+      return(NULL)  # Don't render the table until the action button is clicked
+    } else {
+      return(input_query_dgidb())
+      }
+  })
+  
+  ###### ==== DOWNLOAD Drug Prediction table ==== #### 
+  output$download_results_dgidb <- downloadHandler("Occurrences_results_table.tsv",
+                                                   content = function(file){
+                                                     write.table(apply(input_query_dgidb(),2,as.character),  
+                                                                 file,
+                                                                 col.names = TRUE,
+                                                                 row.names = FALSE,
+                                                                 sep ="\t")
+                                                   },
+                                                   contentType = "text/tsv")
+  
+  ###### ==== PROTTER ==== ####
+ input_protter <- eventReactive(input$load_query_protter, {
+   if (length(c(input$contents_rows_selected)) == 0){
+     return(NULL)
+   }
+   if (input$exp == "TMT-peptide"){
+     prot_id <- as.character(data_result()[c(input$contents_rows_selected)[1], "Protein ID"])
+     peptides <- data_result()[which(data_result()["Protein ID"] == prot_id), 'Index']
+     peptides <- paste(sapply(strsplit(peptides, "_"), function(x) x[[2]]),collapse=",")
+     image <- request_protter(prot_id, peptides, input$annotations_options)
+
+   } else {
+     print(input$annotations_options)
+     prot_id <- data_result()[c(input$contents_rows_selected)[1], "Protein ID"]
+     image <- request_protter(prot_id, annotations=input$annotations_options)
+   }
+  
+   return(image)
+ }) 
+  
+  output$query_protter <- renderPlot({
+    if (is.null(input_protter())){
+      return(ggplot() + annotation_custom(grobTree(textGrob("Please select a protein in the Results Table", 
+                                                           gp=gpar(col="red", fontsize=25)))))
+    } else{
+      return(image_ggplot(input_protter()))
+    }
+    
+  })
+  
+  output$download_protter_img <- downloadHandler(
+    filename = function() {
+      "protter_image.png"
+    },
+    content = function(file) {
+      image_write(input_protter(), path = file)
+    }
+  )
+  
   
   #### Data table
   output$contents_occ <- DT::renderDataTable({

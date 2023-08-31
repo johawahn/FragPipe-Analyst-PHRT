@@ -1,0 +1,1 @@
+CancerCommons,CGI,ChemblInteractions,ClearityFoundationBiomarkers,ClearityFoundationClinicalTrial,DoCM,DrugBank,DTC,FDA,JAX-CKB,MyCancerGenome,MyCancerGenomeClinicalTrial,NCI,OncoKB,PharmGKB,TALC,TdgClinicalTrial,TEND,TTD,CIViC,COSMIC,GuideToPharmacology

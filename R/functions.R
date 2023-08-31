@@ -721,8 +721,10 @@ delete_prefix <- function(words) {
 
 #### ===== plot tsne
 plot_tsne <- function(dep, n_max_iter=1000){
-  perplexity_nbr <- floor(nrow(t(assay(dep)))/3)-1
-  tsne_quant = Rtsne(t(assay(dep)), epoch_callback = NULL, perplexity=perplexity_nbr, max_iter = n_max_iter)
+  matrix <- t(na.omit(assay(dep)))
+  perplexity_nbr <- floor(nrow(matrix)/3)-1
+  
+  tsne_quant = Rtsne(matrix, epoch_callback = NULL, perplexity=perplexity_nbr, max_iter = n_max_iter)
   
   print("tsne calculations are done")
   colors <- rainbow(length(unique(colData(dep)$condition))) #number of colors depends on number of groups
@@ -733,7 +735,6 @@ plot_tsne <- function(dep, n_max_iter=1000){
     scale_color_manual(values = colors) +
     theme_minimal()
   
-  print(p)
   return(p)
 }
 
