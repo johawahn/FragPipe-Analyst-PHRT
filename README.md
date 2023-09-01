@@ -46,7 +46,7 @@ You can build it natively:
 
 ``` sh
 # Clone the repository
-git clone https://github.com/johawahn/FragPipe-Analys-PHRT.git
+git clone https://github.com/johawahn/FragPipe-Analyst-PHRT
 
 # Move to the folder
 cd FragPipe-Analyst-PHRT
