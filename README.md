@@ -46,10 +46,10 @@ You can build it natively:
 
 ``` sh
 # Clone the repository
-git clone https://github.com/MonashProteomics/FragPipe-Analys.git
+git clone https://github.com/johawahn/FragPipe-Analys-PHRT.git
 
 # Move to the folder
-cd FragPipe-Analyst
+cd FragPipe-Analyst-PHRT
 
 # Inside R console or R studio
 > library("shiny")
