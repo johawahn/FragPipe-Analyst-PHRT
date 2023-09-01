@@ -2145,16 +2145,16 @@ output$download_density_svg<-downloadHandler(
     if (length(gene_names) == 0){return(error_df)}
     #example_names = c('FLT3','EGFR','KRAS')
     
-    query <- DGIAPI(genes = gene_names, interaction_sources = input$interaction_sources,
+    df <- DGIAPI_R(genes = gene_names, interaction_sources = input$interaction_sources,
                     interaction_types = input$interaction_type, gene_categories = input$gene_categories, 
                     source_trust_levels = input$source_trust, antineoplastic_only = input$antineoplastic_only)
-    result <- query$run_workflow()
+    #result <- query$run_workflow()
     
-    if (is.null(result)) {
+    if (is.null(df)) {
       df <- error_df
     } else {
-      df <- as.data.frame(do.call(rbind, result))
-      print(df)
+      #df <- as.data.frame(do.call(rbind, result))
+      #print(df)
     }
     return(df)
   })
@@ -2209,12 +2209,22 @@ output$download_density_svg<-downloadHandler(
     
   })
   
-  output$download_protter_img <- downloadHandler(
+  output$download_protter_img_png <- downloadHandler(
     filename = function() {
       "protter_image.png"
     },
     content = function(file) {
       image_write(input_protter(), path = file)
+    }
+  )
+  
+  output$download_protter_img_svg <- downloadHandler(
+    filename = function() {
+      "protter_image.svg"
+    },
+    content = function(file) {
+      image_write(magick::image_convert(input_protter(), 
+                                        format='svg'), path = file)
     }
   )
   

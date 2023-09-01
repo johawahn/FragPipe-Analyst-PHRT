@@ -27,6 +27,10 @@ request_protter <- function(prot_ID, peptides="", annotations=c()){
     param["n:Disulfide bonds,s:box,fc:greenyellow,bc:greenyellow"] <- "UP.DISULFID"
   }
   
+  if('lux_mods' %in% annotations){
+    param["n:Lux Modifications,s:circ,bc:moccasin"] <- "H,W"
+  }
+  
   server <- "http://wlab.ethz.ch/protter/create?"
   
   response <- GET(server, query=param)
@@ -35,5 +39,5 @@ request_protter <- function(prot_ID, peptides="", annotations=c()){
   return(magick_image)
 }
 
-#example <- request_protter("P36578","AAAAAAALQAK,MACARPLIS,AAVAGKKPVVGK,APIRPDIVNFVHTNLR")
+#example <- request_protter("A0A0B4J2D5", annotations = c('disulf_bonds'))
 

@@ -965,7 +965,8 @@ ui <- function(request){shinyUI(
                                                                       choices = c('PTMs'='ptms',
                                                                                   'Variants'='variants',
                                                                                   'Disulfide Bonds'='disulf_bonds',
-                                                                                  'Signal Peptide'='signal_pep'),
+                                                                                  'Signal Peptide'='signal_pep',
+                                                                                  'Lux Modifications'='lux_mods'),
                                                                       shape = "round",
                                                                       selected = FALSE)
                               ),
@@ -975,12 +976,15 @@ ui <- function(request){shinyUI(
                               status = "success",
                               solidHeader = TRUE))), # Column of query options
                  column(9,
-                        box(width = NULL,
+                        box(width = "auto",
                             title = "Protter Result",
-                            shinycssloaders::withSpinner(plotOutput("query_protter", height = "900"), color = "pink"),
-                           downloadButton('download_protter_img', 'Download Image'),
+                            shinycssloaders::withSpinner(plotOutput("query_protter", height = 900), color = "pink"),
+                            fluidRow(
+                              column(4, downloadButton('download_protter_img_png', 'Download png')),
+                              column(4, downloadButton('download_protter_img_svg', 'Download svg'))
+                            ),
                             status = "success",
-                           solidHeader = TRUE)) #column of results table
+                            solidHeader = TRUE)) #column of results table
                  ), # slider bar column closed)
         ) # Protter tab closes
             ) # panel_list close

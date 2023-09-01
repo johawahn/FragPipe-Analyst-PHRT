@@ -59,12 +59,9 @@ source("R/transform_spectro.R")
 source("R/LFQpep_to_TMTpep.R")
 source("R/quant_matrix_to_frag.R")
 source("R/script_protter.R")
+source("R/DGIAPI_R.R")
 
-library("reticulate")
-############# CHANGE THIS TO THE ENVIRONMENT THAT YOU WANT ##########################
-######### ONE THAT HAS REQUESTS AND NUMPY ######################################3
-use_condaenv(condaenv = "/local/home/usr/anaconda3")
-source_python('python/drug_prediction.py')
+
 
 
 
