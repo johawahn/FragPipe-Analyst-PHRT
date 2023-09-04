@@ -46,8 +46,7 @@ You can build it natively:
 
 ``` sh
 
-# Please install git in your local computer to be able to clone the repository
-
+# Please install git on your local computer to be able to clone the repository
 # Clone the repository
 git clone https://github.com/johawahn/FragPipe-Analyst-PHRT
 
