@@ -5,8 +5,13 @@ expr_to_frag_input <- function(quant_matrix){
   sample_names <- colnames(quant_matrix)[2:ncol(quant_matrix)]
   colnames(quant_matrix)[-1] <- paste(colnames(quant_matrix[-1]), "Intensity") 
   quant_matrix[-1] <- apply(quant_matrix[-1], c(1, 2), function(x) 10^x)
-
-  cores <- detectCores()-1
+  
+  if (.Platform$OS.type == 'windows'){
+    cores <- 1
+  } else {
+    cores <- detectCores()-1
+  }
+  
   
   batch_size <- 250
   num_batches <- ceiling(length(quant_matrix$ProteinName) / batch_size)

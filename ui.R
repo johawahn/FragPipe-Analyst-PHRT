@@ -55,8 +55,8 @@ ui <- function(request){shinyUI(
                      condition = "input.exp == 'LFQ'",
                      radioButtons("soft_select",
                                   "Type of file",
-                                  choices = c("Spectronaut"="Spectronaut",
-                                              "FragPipe"="FragPipe",
+                                  choices = c("FragPipe"="FragPipe",
+                                              "Spectronaut"="Spectronaut",
                                               "Intensity Matrix"="quant_matrix"),
                                   selected = "FragPipe"),
                      

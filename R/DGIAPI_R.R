@@ -27,12 +27,13 @@ DGIAPI_R <- function(genes=c(), interaction_sources=c(), interaction_types=c(),
     variables['drug_types'] <- 'antineoplastic'
   }
   
+  print(variables)
   server <- 'https://dgidb.org/api/v1/interactions.json'
   response <- GET(url=server, query=variables)
   
   content <- httr::content(response, "parse")
   matches <- content$matchedTerms
-  df <- data_frame()
+  df <- data.frame()
   
   if (!is.null(matches)){
     for (match in 1:length(matches)){
@@ -55,6 +56,9 @@ DGIAPI_R <- function(genes=c(), interaction_sources=c(), interaction_types=c(),
     }
   }
   
+  if (length(df) == 0){
+    return(NULL)
+  } 
   colnames(df) <- c('gene_name', 'drug_name','interaction_type', 'source','gene_categories') 
   
   return(df)
@@ -69,7 +73,6 @@ DGIAPI_R <- function(genes=c(), interaction_sources=c(), interaction_types=c(),
 #                   gene_categories = NULL,
 #                   source_trust_levels = NULL,
 #                   antineoplastic_only = NULL)
-
 
 
 
