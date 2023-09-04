@@ -19,14 +19,14 @@ A tool for analyzing quantitative proteomics datasets for [FragPipe](https://fra
   3. Heatmaps
   4. Missing value inspection
   5. Sample coverage
-  6. Protein intensity plots for slected protein(s)
+  6. Protein intensity plots for selected protein(s)
   7. Imputation effect evaluation
 
 - Report and multiple levels of exportable tables for further analysis
   - Table options
     - DE results
     - Unimputed data matrix: Original protein intensities before imputation
-    - Imputed data matrix: Protein intensities after performing selected imputation method
+    - Imputed data matrix: Protein intensities after performing the selected imputation method
 
 ## Public servers
 
@@ -41,10 +41,13 @@ There are two server instances
 - PDFlatex
   
 ### Multiple options
-Once all the dependencies are installed, follow steps below to run the server locally.
+Once all the dependencies are installed, follow the steps below to run the server locally.
 You can build it natively:
 
 ``` sh
+
+# Please install git in your local computer to be able to clone the repository
+
 # Clone the repository
 git clone https://github.com/johawahn/FragPipe-Analyst-PHRT
 
@@ -60,7 +63,7 @@ Or run it through Docker:
 
 ``` sh
 # Clone the repository
-git clone https://github.com/MonashProteomics/FragPipe-Analys.git
+git clone https://github.com/MonashProteomics/FragPipe-Analyst-PHRT.git
 
 # Move to the folder
 cd FragPipe-Analyst
