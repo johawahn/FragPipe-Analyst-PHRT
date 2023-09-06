@@ -13,23 +13,21 @@ RUN apt-get update && apt-get install -yq \
     texlive-fonts-recommended \
     texlive-fonts-extra \
     texlive-latex-extra \
-    python3 \
-    python3-pip
+
 
 RUN Rscript -e 'install.packages(c("devtools", "BiocManager", "tidyverse", "ggrepel", "httr", "rjson", "mvtnorm", "tmvtnorm", \
 "imputeLCMD", "plotly", "DT", "testthat", "RColorBrewer", "shiny","shinyalert","shinydashboard", \
 "shinyjs", "svglite", "rhandsontable", "shinyBS", "shinyWidgets", "ggVennDiagram", "conflicted", "png", \
-"shinycssloaders","shiny.info", "fastcluster", "factoextra", "pathfindR", "UniprotR", "reticulate"), dependencies=TRUE)'
+"shinycssloaders","shiny.info", "fastcluster", "factoextra", "pathfindR", "UniprotR", "parallel", "Rtsne","readr","grid"), dependencies=TRUE)'
 
 ### #FROM bioconductor/bioconductor_docker:RELEASE_3_15
 RUN Rscript -e 'BiocManager::install(pkgs=c("ensembldb", "EnsDb.Hsapiens.v86", "DEP", "SummarizedExperiment", "limma", "ComplexHeatmap", "impute", "pcaMethods"), ask=F, dependencies=TRUE)'
 
-### Install python packages required 
-RUN pip3 install requests numpy
+
 ### RUN Rscript -e 'install.packages("renv")'
 COPY ./ /srv/shiny-server/fragpipe-analyst-PHRT
 COPY shiny-server.conf.prod /etc/shiny-server/shiny-server.conf
-### WORKDIR /srv/shiny-server/fragpipe-analyst
+### WORKDIR /srv/shiny-server/fragpipe-analyst-PHRT
 ### RUN Rscript -e 'renv::init()' # This is already run and pushed to github.
 ### RUN Rscript -e 'renv::restore()'
 ### RUN Rscript -e 'renv::isolate()'

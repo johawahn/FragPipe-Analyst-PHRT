@@ -29,11 +29,10 @@ library("fastcluster")
 library("factoextra")
 library("pathfindR")
 library("magick")
-library("UniprotR")
-library("parallel")
 library("Rtsne")
 library("readr")
 library("grid")
+library("maSigPro")
 })
 
 

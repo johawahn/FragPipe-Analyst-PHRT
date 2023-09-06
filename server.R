@@ -50,17 +50,27 @@ server <- function(input, output, session) {
         showTab(inputId="qc_tabBox", target="sample_coverage_tab")
         # make sure occ_panel visible after users updating their analysis
         showTab(inputId = "tab_panels", target = "occ_panel")
+        hideTab(inputId = "tab_panels", target = "tempo_panel")
         updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       }
       shinyjs::show("venn_filter")
     } else if (input$exp == "TMT" | input$exp == "TMT-peptide") {
       hideTab(inputId = "tab_panels", target = "occ_panel")
       hideTab(inputId="qc_tabBox", target="sample_coverage_tab")
+      hideTab(inputId = "tab_panels", target = "tempo_panel")
       showTab(inputId = "tab_panels", target = "quantification_panel")
       updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
+    } else if (input$exp == "tempo"){
+      hideTab(inputId = "tab_panels", target = "occ_panel")
+      hideTab(inputId="qc_tabBox", target="sample_coverage_tab")
+      hideTab(inputId = "tab_panels", target = "protter_panel")
+      hideTab(inputId = "tab_panels", target = "drug_panel")
+      hideTab(inputId = "tab_panels", target = "quantification_panel")
+      showTab(inputId = "tab_panels", target = "tempo_panel")
     } else { # DIA
       showTab(inputId="qc_tabBox", target="sample_coverage_tab")
       showTab(inputId = "tab_panels", target = "occ_panel")
+      hideTab(inputId = "tab_panels", target = "tempo_panel")
       updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       shinyjs::hide("venn_filter")
     }
@@ -82,7 +92,61 @@ server <- function(input, output, session) {
     #   output$howto<-renderUI({NULL})
     #     }
     # })
+  
+  #  Show elements on clicking Start temporal analysis button
+  observeEvent(start_analysis_tempo(),{
+    print(98)
+    if(input$tempo_analyze==0 | !start_analysis_tempo()){
+      return()
+    }
+    shinyjs::hide("quickstart_info")
+    shinyjs::show("panel_list")
+  })
+  
+  observeEvent(start_analysis_tempo() ,{
+    print(107)
+    if (input$exp == "tempo"){
+      print(109)
+      hideTab(inputId = "tab_panels", target = "occ_panel")
+      hideTab(inputId="qc_tabBox", target="sample_coverage_tab")
+      hideTab(inputId = "tab_panels", target = "protter_panel")
+      hideTab(inputId = "tab_panels", target = "drug_panel")
+      hideTab(inputId = "tab_panels", target = "quantification_panel")
+      showTab(inputId = "tab_panels", target = "tempo_panel")
+    } 
+  })
+  
+  start_analysis_tempo <- eventReactive(input$tempo_analyze,{ 
+    print(120)
+    if(input$tempo_analyze==0 ){
+      return(F)
+    } else {
+      if (input$exp == "tempo") {
+        inFile <- input$tempo_data
+        exp_design_file <- input$tempo_exp_design
+      } 
+      
+      if (is.null(inFile) | is.null(exp_design_file)) {
+        print(130)
+        shinyalert("Input file missing!", "Please checkout your input files", type="info",
+                   closeOnClickOutside = TRUE,
+                   closeOnEsc = TRUE,
+                   timer = 5000)
+        return(F)
+      }
+    
+    }
+    print(139)
+    shinyalert("In Progress!", "Data analysis has started, wait until table and plots
+                appear on the screen", type="info",
+               closeOnClickOutside = TRUE,
+               closeOnEsc = TRUE,
+               timer = 10000) # timer in miliseconds (10 sec)
+    return(T)
+  })
+  
 
+  
    ## Shinyalert
    start_analysis <- eventReactive(input$analyze,{ 
      if(input$analyze==0 ){
@@ -107,16 +171,15 @@ server <- function(input, output, session) {
        } else if (input$exp == "DIA") {
          inFile <- input$dia_expr
          exp_design_file <- input$dia_manifest
-       } else if (input$exp == "TMT-peptide") {
-         if(input$work_select == "LFQ"){
+       } else if (input$exp == "TMT-peptide" & input$work_select == "LFQ") {
            inFile <- input$lfq_pept_expr
            exp_design_file <- input$lfq_pept_annot
-         }else{
+        } else{
            inFile <- input$tmt_pept_expr
            exp_design_file <- input$tmt_pept_annot
          }
          
-       }
+       
        if (is.null(inFile) | is.null(exp_design_file)) {
          shinyalert("Input file missing!", "Please checkout your input files", type="info",
                     closeOnClickOutside = TRUE,
@@ -278,8 +341,7 @@ server <- function(input, output, session) {
         }else{
           inFile <- input$tmt_pept_expr
         }
-
-      }
+      } 
       if(is.null(inFile))
         return(NULL)
       
@@ -358,11 +420,12 @@ server <- function(input, output, session) {
         
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
 
-      } 
+      }
 
       return(temp_data)
     })
-
+    
+    
     # observeEvent(input$analyze,{
     #   exp_design<-reactive({
     #     inFile<-input$file2
@@ -401,8 +464,7 @@ server <- function(input, output, session) {
         }else{
           inFile <- input$tmt_pept_annot
         }
-        
-      }
+      } 
       if (is.null(inFile))
         return(NULL)
       if (input$exp == "TMT" | input$exp == "TMT-peptide") {
@@ -524,10 +586,98 @@ server <- function(input, output, session) {
         if (!all(is.na(temp_df$replicate))) {
           temp_df$label <- temp_df$file
         }
-      }
+      } 
       return(temp_df)
     })
    
+    ###### TEMPORAL DATA ANALYSIS
+    tempo_data_input<-reactive({NULL})
+    tempo_exp_design_input<-reactive({NULL})
+    
+    tempo_data_input<-eventReactive(input$tempo_analyze, {
+      print(1)
+      if (input$exp == "tempo") {
+        inFile <- input$tempo_data
+      }
+      
+      temp_file <- read.csv(inFile$datapath, header=T)
+      temp_file <- temp_file %>%
+        mutate_at(c(1), list(~ unlist(lapply(temp_file[[1]], FUN=function(x) {strsplit(x, "\\|")[[1]][2]})))) %>%
+        column_to_rownames(var=names(temp_file)[1])
+      return(temp_file)
+    })
+    
+    tempo_exp_design_input<-eventReactive(input$tempo_analyze, {
+      print(2)
+      if (input$exp == "tempo") {
+        inFile <- input$tempo_exp_design
+      }
+      
+      temp_file <- read.csv(inFile$datapath, header=T, row.names = 1)
+      return(temp_file)
+    })
+    
+    design_matrix <- eventReactive(input$tempo_visualization, {
+      print(3)
+      design <- make.design.matrix(tempo_exp_design_input(), degree = input$tempo_degree)
+      return(design)
+    })
+    
+    tempo_comparisons <- eventReactive(design_matrix(), {
+      print(4)
+      return(unique(design_matrix()$groups.vector))
+    })
+    
+    
+    
+    sigs <- eventReactive(design_matrix(), {
+      print(5)
+      fit <- p.vector(tempo_data_input(), design_matrix(), Q = input$tempo_Q_val, MT.adjust = "BH", 
+                      min.obs = (input$tempo_degree+1)*length(tempo_comparisons())+1)
+      
+      #  Finding significant differences (find which are the profile difference between experimental groups)
+      tstep <- T.fit(fit, step.method = input$tempo_step_method, alfa = 0.05)
+      sigs <- get.siggenes(tstep, rsq = input$tempo_rsq, vars = "groups")
+      return(sigs)
+    })
+    
+    ###### TEMPORAL VENN DIAGRAM
+    output$spinner_tempo_venn_plot <- renderUI({
+      req(input$tempo_visualization)
+      shinycssloaders::withSpinner(plotOutput("tempo_venn_plot", width = "auto", height=600), color = "#f7aaec")
+    })
+    
+    observeEvent(input$tempo_visualization, {
+      output$tempo_venn_plot<-renderPlot({
+        Sys.sleep(2)
+        plot_venn <- suma2Venn(sigs()$summary[tempo_comparisons()])
+        return(plot_venn)
+      })
+    })
+    
+    ###### TEMPORAL CLUSTER REGRESSIONS OF ALL PROTEINS
+    output$tempo_comparison <- renderUI({
+      if (!is.null(tempo_comparisons())) {
+        selectizeInput("tempo_comparison",
+                       "Comparison",
+                       choices = tempo_comparisons())
+      }
+    })
+    
+    output$spinner_tempo_cluster_plot <- renderUI({
+      req(input$tempo_cluster_run)
+      shinycssloaders::withSpinner(plotOutput("tempo_cluster_plot", width = "auto", height=900), color = "#f7aaec")
+    })
+    
+    observeEvent(input$tempo_cluster_run, {
+      output$tempo_cluster_plot<-renderPlot({
+        Sys.sleep(2)
+        plot <- see.genes(get(as.character(input$tempo_comparison), sigs()$sig.genes), show.fit = T, 
+                          dis =design_matrix()$dis, cluster.method="kmeans" ,cluster.data = 1, 
+                          k = input$tempo_cluster_nbr)
+        return(plot)
+      })
+    })
     
 ### Load data from Rdata
   # observeEvent(input$load_data,{
@@ -844,7 +994,7 @@ server <- function(input, output, session) {
      return(result_se)
    })
    
-   comparisons<-reactive ({
+   comparisons <-reactive ({
      print("server.R line 810 COMPARISON()")
     if (input$exp == "TMT"  | input$exp == "DIA" | input$exp == "TMT-peptide") {
       print("server.R line 812")
@@ -867,6 +1017,7 @@ server <- function(input, output, session) {
        ## Remove leading and trailing spaces
        trimws(temp)
      }
+     
    })
 
 
@@ -1179,7 +1330,8 @@ server <- function(input, output, session) {
    })
 
    #### Interactive UI
-   output$significantBox <- renderUI({
+   observeEvent(processed_data(),{
+     output$significantBox <- renderUI({
      num_total <- assay(processed_data()) %>%
        nrow()
      num_signif <- dep() %>%
@@ -1197,7 +1349,8 @@ server <- function(input, output, session) {
                              color = "olive", width=12)
      
      return(info_box)
-   })
+   })})
+   
 
   ##### Get results dataframe from Summarizedexperiment object
    data_result <- eventReactive(input$analyze, {
@@ -2384,7 +2537,7 @@ output$download_density_svg<-downloadHandler(
  #   }
  # })
  
- ## comparisons for demo
+ ## <- for demo
  # output$contrast_dm <- renderUI({
  #   if (!is.null(comparisons_dm())) {
  #     df <- SummarizedExperiment::rowData(dep_dm())

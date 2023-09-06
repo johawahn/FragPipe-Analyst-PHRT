@@ -8,7 +8,8 @@ if (ENABLE_PEPTIDE_ANALYSIS) {
   #analysis_options <- c("LFQ"="LFQ", "LFQ (peptide)"="LFQ-peptide", 
   #                      "TMT"="TMT", "DIA"="DIA", "Peptide"="TMT-peptide")
   analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", 
-                        "DIA"="DIA", "Peptide"="TMT-peptide")
+                        "DIA"="DIA", "Peptide"="TMT-peptide",
+                        "Temporal"="tempo")
 } else {
   analysis_options <- c("LFQ"="LFQ", "TMT"="TMT", "DIA"="DIA")
 }
@@ -200,6 +201,17 @@ ui <- function(request){shinyUI(
                                     #            "Spectral Count"="Spectral Count"),
                                     selected = "Intensity")
                      )),
+                   conditionalPanel(
+                     condition = "input.exp == 'tempo'",
+                     fileInput('tempo_data', 'Upload temporal data matrix',
+                               accept=c('text/csv',
+                                        'text/comma-separated-values,text/plain',
+                                        '.csv')),
+                     fileInput('tempo_exp_design', 'Upload experimental design annotation',
+                               accept=c('text/csv',
+                                        'text/comma-separated-values,text/plain',
+                                        '.csv')),
+                   ),
                    
                    
                  tags$hr(),
@@ -241,7 +253,14 @@ ui <- function(request){shinyUI(
                           #              min = 1, max = 10, value = 3)
                  ),
                tags$hr(),
-               actionButton("analyze", "Run"),
+               conditionalPanel(
+                 condition = "input.exp != 'tempo'",
+                 actionButton("analyze", "Run")
+               ),
+               conditionalPanel(
+                 condition = "input.exp == 'tempo'",
+                 actionButton("tempo_analyze", "Run")
+               ),
                #actionButton("load_data", "Load example data")
                tags$script(HTML("
                  $(document).ready(function() {
@@ -986,7 +1005,97 @@ ui <- function(request){shinyUI(
                             status = "success",
                             solidHeader = TRUE)) #column of results table
                  ), # slider bar column closed)
-        ) # Protter tab closes
+        ), # Protter tab closes
+        tabPanel('Temporal Visualization',
+                 value = "tempo_panel",
+                 br(),
+                 fluidRow(tags$style(
+                   ".box {
+                                 border-top: none;
+                                 box-shadow: 0 0px 0px rgb(0 0 0 / 10%);
+                                 }"
+                          ),
+                   column(3,
+                          box(width = 17,
+                              title = "Regression Parameters",
+                              tags$p("Analysis of single and multiseries time course experiments using the ",
+                                     tags$a(href="https://academic.oup.com/bioinformatics/article/22/9/1096/200371", target="_blank", 
+                                            "maSigPro"), " package, which follows a two steps regression strategy to find proteins with significant temporal
+                                    expression changes and significant differences between experimental groups"),
+                              
+                              tags$hr(),
+                             tags$h4("General Regression Model"),
+                             fluidRow(column(4,numericInput("tempo_degree",
+                                                        "Polynomial degree",
+                                                        value = 3,
+                                                        step = 1
+                                                        )),
+                                    column(4,numericInput("tempo_Q_val",
+                                                        "FDR threshold",
+                                                        value = 0.05,
+                                                        step = 0.01
+                                    ))),
+                                  
+                                  tags$hr(),
+
+                             tags$h4("Stepwise regression for differences between experimental groups"),
+                             fluidRow(column(7,selectInput(
+                                      inputId = "tempo_step_method",
+                                      label = "Step Method:",
+                                      choices = c("Backward"="backward", 
+                                                  "Forward"="forward", 
+                                                  "Two ways backward"="two.ways.backward",
+                                                  "Two ways forward"="two.ways.forward"),
+                                      multiple = FALSE
+                                    )),
+                                    column(4,numericInput("tempo_rsq",
+                                                        "R square threshold",
+                                                        value = 0.6,
+                                                        step = 0.1
+                                    ))),
+                              tags$hr(),
+                              fluidRow(column(5,actionButton("tempo_visualization", "Visualize!"))),
+                                  status = "success",
+                                  solidHeader = TRUE)
+                              ), # close column of temporal parameters
+                   column(9, 
+                          box(width = "auto",
+                              title = "Common significant proteins",
+                              status = "primary",
+                              solidHeader = TRUE,
+                              uiOutput("spinner_tempo_venn_plot"),
+                              fluidRow(column(4, actionButton("download_tempo_venn", "Download")))
+                              ),
+                          )
+                   
+                      ), # fluidrow parameters + venn plot close
+            fluidRow(
+              column(12, box(width = "auto",
+                  height = "auto",
+                  title = "Cluster Analysis ",
+                  status = "primary",
+                  solidHeader = TRUE,
+                  conditionalPanel(
+                    condition = "input.tempo_visualization",
+                    fluidRow(
+                    column(3,numericInput("tempo_cluster_nbr",
+                                                 "Number of clusters",
+                                                 value = 6,
+                                                 step = 1)
+                           ),
+                    column(4, uiOutput("tempo_comparison")),
+                    column(3, actionButton("tempo_cluster_run", "Run Analysis!"))
+                    ),
+                  uiOutput("spinner_tempo_cluster_plot"),
+                  fluidRow(
+                    column(4, actionButton("download_tempo_cluster", "Download plot")),
+                    column(4, actionButton("download_tempo_analysis", "Download Analysis")))
+                  )
+                  
+              )),
+              
+            ) # fluidrow of regression plot
+                 ) #tempo_panel close
             ) # panel_list close
           ) # div close
         )#bookmarkButton()
