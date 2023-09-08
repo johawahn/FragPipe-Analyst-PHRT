@@ -51,6 +51,8 @@ server <- function(input, output, session) {
         # make sure occ_panel visible after users updating their analysis
         showTab(inputId = "tab_panels", target = "occ_panel")
         hideTab(inputId = "tab_panels", target = "tempo_panel")
+        showTab(inputId = "tab_panels", target = "protter_panel")
+        showTab(inputId = "tab_panels", target = "drug_panel")
         updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       }
       shinyjs::show("venn_filter")
@@ -59,6 +61,8 @@ server <- function(input, output, session) {
       hideTab(inputId="qc_tabBox", target="sample_coverage_tab")
       hideTab(inputId = "tab_panels", target = "tempo_panel")
       showTab(inputId = "tab_panels", target = "quantification_panel")
+      showTab(inputId = "tab_panels", target = "protter_panel")
+      showTab(inputId = "tab_panels", target = "drug_panel")
       updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
     } else if (input$exp == "tempo"){
       hideTab(inputId = "tab_panels", target = "occ_panel")
@@ -71,6 +75,8 @@ server <- function(input, output, session) {
       showTab(inputId="qc_tabBox", target="sample_coverage_tab")
       showTab(inputId = "tab_panels", target = "occ_panel")
       hideTab(inputId = "tab_panels", target = "tempo_panel")
+      showTab(inputId = "tab_panels", target = "protter_panel")
+      showTab(inputId = "tab_panels", target = "drug_panel")
       updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       shinyjs::hide("venn_filter")
     }
@@ -358,10 +364,6 @@ server <- function(input, output, session) {
         temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
         temp_data <- as.data.frame(temp[[1]])
         
-        print("##################### QUANT #######################")
-        print(head(temp_data))
-        print("#####################################################")
-        
         
       } else if (input$soft_select == "quant_matrix"){
         temp_data_quant <-  read.csv(inFile$datapath,
@@ -401,7 +403,6 @@ server <- function(input, output, session) {
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
         validate(fragpipe_input_test(temp_data))
         print('server.R line 307')
-        print(head(temp_data))
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "DIA"){ # DIA
@@ -447,6 +448,8 @@ server <- function(input, output, session) {
         if(input$soft_select == "Spectronaut"){
           inFile <- input$spectro_manifest
           quant <-  input$spectro_expr
+          print(inFile$datapath)
+          
         }else if(input$soft_select == "quant_matrix"){
           inFile <- input$quant_manifest
           quant <-  input$quant_expr
@@ -509,10 +512,7 @@ server <- function(input, output, session) {
           samples_with_replicate <- unique(gsub("_\\d+$", "", samples_with_replicate))
           temp_df[temp_df$label %in% samples_with_replicate, "label"] <- paste0(temp_df[temp_df$label %in% samples_with_replicate, "label"], "_1")
         }
-        
-        #print("##################### ANO #######################")
-        #print(head(temp_df))
-        #print("#####################################################")
+
         
       } else if (input$exp == "LFQ"){
         print('tweak line 402')
@@ -520,7 +520,7 @@ server <- function(input, output, session) {
           print('Tweak line 404')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
-                                       sep=input$spectro_sep_anp)
+                                       sep=input$spectro_sep_ano)
           
           temp_data_expr <-  read.csv(quant$datapath,
                                        header = TRUE, 
@@ -548,9 +548,7 @@ server <- function(input, output, session) {
                                 sep="\t",
                                 stringsAsFactors = FALSE)
           
-          print("##################### ANO #######################")
-          print(head(temp_df))
-          print("#####################################################")
+
         }
         
         # exp_design_test(temp_df)
@@ -655,6 +653,17 @@ server <- function(input, output, session) {
       })
     })
     
+    observeEvent(input$download_tempo_venn,{
+      folder <- paste0(Sys.Date(), "_temporalOuput")
+      dir.create(folder)      
+      pdf(paste0(folder,"/sig_prots_venn.pdf"))  # Adjust width and height as needed
+      
+      suma2Venn(sigs()$summary[tempo_comparisons()])
+      
+      # Close the PDF device
+      dev.off()
+      
+    })
     ###### TEMPORAL CLUSTER REGRESSIONS OF ALL PROTEINS
     output$tempo_comparison <- renderUI({
       if (!is.null(tempo_comparisons())) {
@@ -678,6 +687,71 @@ server <- function(input, output, session) {
         return(plot)
       })
     })
+    
+    observeEvent(input$download_tempo_cluster,{
+      folder <- paste0(Sys.Date(), "_temporalOuput")
+      dir.create(folder)
+      pdf(paste0(folder,"/",as.character(input$tempo_comparison), "_clustering.pdf"))  # Adjust width and height as needed
+      
+      see.genes(get(as.character(input$tempo_comparison), sigs()$sig.genes), show.fit = T, 
+                dis =design_matrix()$dis, cluster.method="kmeans" ,cluster.data = 1, 
+                k = input$tempo_cluster_nbr)
+      
+      
+      # Close the PDF device
+      dev.off()
+      
+    })
+    ###### PROTEIN EXPRESSION PROFILE
+
+    output$spinner_prot_regression_plot <- renderUI({
+      req(input$tempo_prot_profile_run)
+      shinycssloaders::withSpinner(plotOutput("tempo_prot_regression_plot", width = "auto", height=900), color = "#f7aaec")
+    })
+    
+    observeEvent(input$tempo_prot_profile_run, {
+      output$tempo_prot_regression_plot<-renderPlot({
+        Sys.sleep(2)
+        PlotGroups(tempo_data_input()[rownames(tempo_data_input()) == as.character(input$tempo_prot), ], 
+                   edesign = tempo_exp_design_input(), show.fit = TRUE, 
+                   dis = design_matrix()$dis, groups.vector = design_matrix()$groups.vector)
+      })
+    })
+    
+    observeEvent(input$download_prot_regression_plot,{
+      folder <- paste0(Sys.Date(), "_temporalOuput")
+      dir.create(folder)
+      
+      pdf(paste0(folder, "/expression_value_", as.character(input$tempo_prot),".pdf"))  # Adjust width and height as needed
+
+      PlotGroups(tempo_data_input()[rownames(tempo_data_input()) == as.character(input$tempo_prot), ], edesign = tempo_exp_design_input(), 
+                 show.fit = TRUE, dis = design_matrix()$dis, groups.vector = design_matrix()$groups.vector)
+      
+      
+      # Close the PDF device
+      dev.off()
+      
+    })
+    
+    observeEvent(input$download_prot_regression_plot_all,{
+      folder <- paste0(Sys.Date(), "_temporalOuput")
+      dir.create(folder)
+      
+      pdf(paste0(folder, "/expression_value_all_prots.pdf"))
+      sig_prots <- rownames(get("sig.profiles" ,get(input$tempo_comparison, sigs()$sig.genes)))
+      par(mfrow = c(2, 3))
+      # Loop through the proteins and generate plots
+      for (prot in sig_prots) {
+        PlotGroups(tempo_data_input()[rownames(tempo_data_input()) == prot, ], edesign = tempo_exp_design_input(), 
+                   show.fit = TRUE, dis = design_matrix()$dis, groups.vector = design_matrix()$groups.vector)
+        
+      }
+      
+      # Close the PDF device
+      dev.off()
+      
+    })
+
     
 ### Load data from Rdata
   # observeEvent(input$load_data,{
@@ -1208,25 +1282,29 @@ server <- function(input, output, session) {
         data <- imputed_data()
       } else {
         data <- processed_data()
-      }
+      } 
       if (input$exp == "TMT" & metadata(data)$level == "protein") {
         protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
-      } else if (input$exp == "TMT-peptide" & input$all_peps_prot){ # All the precursors from tghe same protein are highlighted
+      } else if (input$exp == "TMT-peptide" & input$all_peps_prot){ # All the precursors from the same protein are highlighted
         prot_group <- data_result()[input$contents_rows_selected, c("Protein ID")]
         protein_selected <- data_result()[which(data_result()["Protein ID"] == prot_group), c("Index")]
       } else if (input$exp == "TMT-peptide" & !input$all_peps_prot) {
         protein_selected <- data_result()[input$contents_rows_selected, c("Index")]
       } else {
+        print("Line 1220")
         protein_selected <- data_result()[input$contents_rows_selected, c("Gene Name")]
+
       }
       protein_selected <- as.character(protein_selected)
       if(length(levels(as.factor(colData(processed_data())$replicate))) <= 8){
         return(plot_protein(data, protein_selected, as.character(input$type), id="label"))
       } else {
         protein_plot <- plot_protein(data, protein_selected, as.character(input$type), id="label")
-        return(protein_plot + scale_color_brewer(palette = "Paired"))
+        return(protein_plot)
       }
     })
+    
+    
     
 
    ## QC plots inputs
@@ -1355,8 +1433,8 @@ server <- function(input, output, session) {
   ##### Get results dataframe from Summarizedexperiment object
    data_result <- eventReactive(input$analyze, {
      if(input$work_select=='LFQ'){
-     get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE)}
-     else{get_results_proteins(dep(), input$exp)}}
+     get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE)
+       } else{get_results_proteins(dep(), input$exp)}}
      )
    
     # Obtain protein level table from peptide level LFQ report
@@ -1723,12 +1801,12 @@ server <- function(input, output, session) {
     }# else close
   })
   
-  output$protein_plot<-renderPlotly({
+ 
+  output$protein_plot <- renderPlotly({
     if(!is.null(input$contents_rows_selected)){
-      protein_input()
+      return(protein_input())
     }
   })
- 
  
   ### QC Outputs
   output$sample_corr <-renderPlot({
@@ -1992,7 +2070,10 @@ server <- function(input, output, session) {
       paste0(input$type,".pdf")
     },
     content = function(file) {
-      orca(protein_input(), file)
+      pdf(file)
+      prot_plot <- protein_input()
+      print(prot_plot)
+      dev.off()
     }
   )
   

@@ -593,7 +593,7 @@ ui <- function(request){shinyUI(
                                            ),
                                            fluidRow(
                                              shinycssloaders::withSpinner(plotlyOutput("protein_plot"), color = "pink")
-                                             # downloadButton('downloadProtein', 'Download Plot')
+                                             #downloadButton('downloadProtein', 'Download Plot')
                                              )
                                            )
                               ) # tabBox end
@@ -940,7 +940,7 @@ ui <- function(request){shinyUI(
                             ),
                             div(shinyWidgets::prettyCheckboxGroup("query_significant_only",
                                                                   label = "Filter Genes",
-                                                                  choices = c('Significant Only'='query_sig_only',
+                                                                  choices = c('All significant genes'='query_sig_only',
                                                                               'Surface Only'='query_surfy_only'),
                                                                   shape = "round",
                                                                   selected = FALSE)
@@ -1092,9 +1092,27 @@ ui <- function(request){shinyUI(
                     column(4, actionButton("download_tempo_analysis", "Download Analysis")))
                   )
                   
-              )),
-              
-            ) # fluidrow of regression plot
+              ))), # fluidrow of regression plot clos
+            fluidRow(
+              column(12, box(width = "auto",
+                             height = "auto",
+                             title = "Protein Expression Analysis",
+                             status = "primary",
+                             solidHeader = TRUE,
+                             conditionalPanel(
+                               condition = "input.tempo_visualization",
+              fluidRow(
+                column(5, textInput(inputId = 'tempo_prot', label = 'Search for a protein', 
+                        value = "")),
+                column(3, actionButton("tempo_prot_profile_run", "Run Analysis!"))
+              )
+              ,
+              uiOutput("spinner_prot_regression_plot"),
+              fluidRow(
+                column(4, actionButton("download_prot_regression_plot", "Download Plot")),
+                column(4, actionButton("download_prot_regression_plot_all", "Download All Available Proteins")))
+            )))) # fluidrow of regression of proteins
+            
                  ) #tempo_panel close
             ) # panel_list close
           ) # div close
