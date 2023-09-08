@@ -1994,6 +1994,7 @@ plot_missval_customized <- function(se) {
   if(!any(is.na(se_assay))) {
     stop("No missing values in '", deparse(substitute(se)), "'",
          call. = FALSE)
+    return(NULL)
   }
   
   # Make assay data binary (1 = valid value, 0 = missing value)

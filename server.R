@@ -1,6 +1,5 @@
 #Define server logic to read selected file ----
 
-
 server <- function(input, output, session) {
 
   
@@ -39,13 +38,13 @@ server <- function(input, output, session) {
   
   observeEvent(start_analysis() ,{
     if (input$exp == "LFQ"){
-      print("server.R line 39")
-      
+
       exp <- exp_design_input()
       if (all(is.na(exp$replicate))) {
         showTab(inputId = "tab_panels", target = "quantification_panel")
         updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       } else {
+        
         showTab(inputId = "tab_panels", target = "quantification_panel")
         showTab(inputId="qc_tabBox", target="sample_coverage_tab")
         # make sure occ_panel visible after users updating their analysis
@@ -53,9 +52,11 @@ server <- function(input, output, session) {
         hideTab(inputId = "tab_panels", target = "tempo_panel")
         showTab(inputId = "tab_panels", target = "protter_panel")
         showTab(inputId = "tab_panels", target = "drug_panel")
+        showTab(inputId="qc_tabBox", target="missingval_heatmap_tab")
         updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       }
       shinyjs::show("venn_filter")
+      
     } else if (input$exp == "TMT" | input$exp == "TMT-peptide") {
       hideTab(inputId = "tab_panels", target = "occ_panel")
       hideTab(inputId="qc_tabBox", target="sample_coverage_tab")
@@ -63,6 +64,11 @@ server <- function(input, output, session) {
       showTab(inputId = "tab_panels", target = "quantification_panel")
       showTab(inputId = "tab_panels", target = "protter_panel")
       showTab(inputId = "tab_panels", target = "drug_panel")
+      if (input$exp == "TMT"){
+        showTab(inputId="qc_tabBox", target="missingval_heatmap_tab")
+      } else if (input$exp == "TMT-peptide"){
+        hideTab(inputId="qc_tabBox", target="missingval_heatmap_tab")
+      }
       updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
     } else if (input$exp == "tempo"){
       hideTab(inputId = "tab_panels", target = "occ_panel")
@@ -71,12 +77,14 @@ server <- function(input, output, session) {
       hideTab(inputId = "tab_panels", target = "drug_panel")
       hideTab(inputId = "tab_panels", target = "quantification_panel")
       showTab(inputId = "tab_panels", target = "tempo_panel")
+      showTab(inputId="qc_tabBox", target="missingval_heatmap_tab")
     } else { # DIA
       showTab(inputId="qc_tabBox", target="sample_coverage_tab")
       showTab(inputId = "tab_panels", target = "occ_panel")
       hideTab(inputId = "tab_panels", target = "tempo_panel")
       showTab(inputId = "tab_panels", target = "protter_panel")
       showTab(inputId = "tab_panels", target = "drug_panel")
+      showTab(inputId="qc_tabBox", target="missingval_heatmap_tab")
       updateTabsetPanel(session, "tab_panels", selected = "quantification_panel")
       shinyjs::hide("venn_filter")
     }
@@ -101,7 +109,6 @@ server <- function(input, output, session) {
   
   #  Show elements on clicking Start temporal analysis button
   observeEvent(start_analysis_tempo(),{
-    print(98)
     if(input$tempo_analyze==0 | !start_analysis_tempo()){
       return()
     }
@@ -110,9 +117,7 @@ server <- function(input, output, session) {
   })
   
   observeEvent(start_analysis_tempo() ,{
-    print(107)
     if (input$exp == "tempo"){
-      print(109)
       hideTab(inputId = "tab_panels", target = "occ_panel")
       hideTab(inputId="qc_tabBox", target="sample_coverage_tab")
       hideTab(inputId = "tab_panels", target = "protter_panel")
@@ -123,7 +128,6 @@ server <- function(input, output, session) {
   })
   
   start_analysis_tempo <- eventReactive(input$tempo_analyze,{ 
-    print(120)
     if(input$tempo_analyze==0 ){
       return(F)
     } else {
@@ -133,7 +137,6 @@ server <- function(input, output, session) {
       } 
       
       if (is.null(inFile) | is.null(exp_design_file)) {
-        print(130)
         shinyalert("Input file missing!", "Please checkout your input files", type="info",
                    closeOnClickOutside = TRUE,
                    closeOnEsc = TRUE,
@@ -142,7 +145,6 @@ server <- function(input, output, session) {
       }
     
     }
-    print(139)
     shinyalert("In Progress!", "Data analysis has started, wait until table and plots
                 appear on the screen", type="info",
                closeOnClickOutside = TRUE,
@@ -158,7 +160,6 @@ server <- function(input, output, session) {
      if(input$analyze==0 ){
        return(F)
      } else {
-       print("server.R line 88")
        if (input$exp == "LFQ"){
          if (input$soft_select == "Spectronaut"){
            inFile <- input$spectro_expr
@@ -217,7 +218,6 @@ server <- function(input, output, session) {
    ####======= Render Functions
    
    output$volcano_cntrst <- renderUI({
-     print("server.R line 133")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -229,7 +229,6 @@ server <- function(input, output, session) {
    
    ##comparisons
    output$contrast <- renderUI({
-     print("server.R line 145")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -240,7 +239,6 @@ server <- function(input, output, session) {
    })
    
    output$contrast_1 <- renderUI({
-     print("server.R line 162")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -251,7 +249,6 @@ server <- function(input, output, session) {
    })
    
    output$contrast_2 <- renderUI({
-     print("server.R line 162")
      if (!is.null(comparisons())) {
        df <- SummarizedExperiment::rowData(dep())
        cols <- grep("_significant$",colnames(df))
@@ -325,7 +322,6 @@ server <- function(input, output, session) {
     fragpipe_data_example<-reactive({NULL})
     
     fragpipe_data_input<-eventReactive(input$analyze,{
-      print('server.R line 240')
 
       if (input$exp == "LFQ") {
         if (input$soft_select == "Spectronaut"){
@@ -353,27 +349,21 @@ server <- function(input, output, session) {
       
       if (input$soft_select == "Spectronaut"){
         temp_data_quant <-  read.csv(inFile$datapath,
-                               header = TRUE, 
-                               sep=input$spectro_sep_quant)
-
+                                    header = TRUE, 
+                                    sep=input$spectro_sep_quant)
+        
         temp_data_annot <-  read.csv(annotation$datapath,
                                      header = TRUE, 
                                      sep=input$spectro_sep_ano)
         
-        
         temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
         temp_data <- as.data.frame(temp[[1]])
-        
         
       } else if (input$soft_select == "quant_matrix"){
         temp_data_quant <-  read.csv(inFile$datapath,
                                      header = TRUE)
         
-        
-        
         temp_data <- expr_to_frag_input(temp_data_quant)
-        
-        
       } else if (input$work_select == 'LFQ'){
         temp_data <- quant_lfq_to_tmt(inFile$datapath, input$lfq_pept_type)
           
@@ -398,11 +388,9 @@ server <- function(input, output, session) {
         mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "NumberPSM", "Gene", "ProteinID", "MaxPepProb", "ReferenceIntensity")]
         temp_data[mut.cols] <- sapply(temp_data[mut.cols], as.numeric)
       } else if (input$exp == "LFQ") {
-        print('server.R line 303')
         # handle - (dash) in experiment column
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
         validate(fragpipe_input_test(temp_data))
-        print('server.R line 307')
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "DIA"){ # DIA
@@ -443,20 +431,17 @@ server <- function(input, output, session) {
     # })
 
     exp_design_input <- eventReactive(input$analyze,{
-      print('server.R line 348')
       if (input$exp == "LFQ"){
         if(input$soft_select == "Spectronaut"){
           inFile <- input$spectro_manifest
           quant <-  input$spectro_expr
-          print(inFile$datapath)
-          
+
         }else if(input$soft_select == "quant_matrix"){
           inFile <- input$quant_manifest
           quant <-  input$quant_expr
         }else
           inFile <- input$lfq_manifest
-        print('server.R line 355')
-        
+
       } else if (input$exp == "TMT") {
         inFile <- input$tmt_annot
       } else if (input$exp == "DIA") {
@@ -515,9 +500,7 @@ server <- function(input, output, session) {
 
         
       } else if (input$exp == "LFQ"){
-        print('tweak line 402')
         if (input$soft_select == "Spectronaut"){
-          print('Tweak line 404')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
                                        sep=input$spectro_sep_ano)
@@ -525,24 +508,19 @@ server <- function(input, output, session) {
           temp_data_expr <-  read.csv(quant$datapath,
                                        header = TRUE, 
                                        sep=input$spectro_sep_quant)
-          
-          
+
           temp <- spectronaut_to_fragpipe(temp_data_expr, temp_data_annot)
           temp_df <- as.data.frame(temp[[2]])
           
         }else if (input$soft_select == "quant_matrix"){
-          print('Tweak line 404')
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE)
 
           temp_data_expr <-  read.csv(quant$datapath,
                                       header = TRUE)
           
-          
           temp_df <- expr_manifest_to_frag_ano(temp_data_annot, temp_data_expr)
-          
         }else{
-          print("server line 430")
           temp_df <- read.table(inFile$datapath,
                                 header = T,
                                 sep="\t",
@@ -593,7 +571,6 @@ server <- function(input, output, session) {
     tempo_exp_design_input<-reactive({NULL})
     
     tempo_data_input<-eventReactive(input$tempo_analyze, {
-      print(1)
       if (input$exp == "tempo") {
         inFile <- input$tempo_data
       }
@@ -606,7 +583,6 @@ server <- function(input, output, session) {
     })
     
     tempo_exp_design_input<-eventReactive(input$tempo_analyze, {
-      print(2)
       if (input$exp == "tempo") {
         inFile <- input$tempo_exp_design
       }
@@ -616,20 +592,17 @@ server <- function(input, output, session) {
     })
     
     design_matrix <- eventReactive(input$tempo_visualization, {
-      print(3)
       design <- make.design.matrix(tempo_exp_design_input(), degree = input$tempo_degree)
       return(design)
     })
     
     tempo_comparisons <- eventReactive(design_matrix(), {
-      print(4)
       return(unique(design_matrix()$groups.vector))
     })
     
     
     
     sigs <- eventReactive(design_matrix(), {
-      print(5)
       fit <- p.vector(tempo_data_input(), design_matrix(), Q = input$tempo_Q_val, MT.adjust = "BH", 
                       min.obs = (input$tempo_degree+1)*length(tempo_comparisons())+1)
       
@@ -788,7 +761,6 @@ server <- function(input, output, session) {
    
 ### Reactive components
    processed_data <- eventReactive(start_analysis(),{
-      print('server.R line 505')
 
      ## check which dataset
      if(!is.null (fragpipe_data_input() )){
@@ -884,7 +856,6 @@ server <- function(input, output, session) {
        }
        return(data_se)
      } else if (input$exp == "TMT-peptide") {
-       print("server.R line 598")
        temp_exp_design <- exp_design()
        # sample without specified condition will be removed
        temp_exp_design <- temp_exp_design[!is.na(temp_exp_design$condition), ]
@@ -915,7 +886,6 @@ server <- function(input, output, session) {
    
 
    filtered_data <- eventReactive(input$analyze,{
-      print('server.R line 620')
 
      # if (input$exp == "LFQ"){ # Check number of replicates
      #   if (input$replicate_filter){
@@ -949,7 +919,6 @@ server <- function(input, output, session) {
    })
    
    unimputed_table<-reactive({
-      print('server.R line 654')
 
      temp1 <-assay(processed_data())
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
@@ -977,7 +946,6 @@ server <- function(input, output, session) {
    })
 
    normalised_data<-reactive({
-      print('server.R line 746')
 
      if (input$exp == "LFQ" | input$exp == "DIA") {
        if (input$normalization == "vsn") {
@@ -992,7 +960,6 @@ server <- function(input, output, session) {
    })
    
    normalized_table<-reactive({
-     print('server.R line 761')
      temp1 <-assay(normalised_data())
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
        colnames(temp1) <- paste(colnames(temp1), "normalized_spectral_count", sep="_")
@@ -1015,9 +982,10 @@ server <- function(input, output, session) {
        # TMT report might has same issue for earlier version of FragPipe (<= 18.0)
       imputed <- impute_customized(normalised_data(),input$imputation)
      } 
-
      return(imputed)
    })
+   
+
    
    imputed_table<-reactive({
      temp1 <- assay(imputed_data())
@@ -1047,31 +1015,23 @@ server <- function(input, output, session) {
      # diff_all <- test_diff_customized(imputed_data(), type = "manual",
      #                      test = c("SampleTypeTumor"), design_formula = formula(~0+SampleType))
      data <- imputed_data()
-     print("######## data line 820  ##############")
 
-     
      if (input$exp == "LFQ" & input$lfq_type == "Spectral Count") {
        assay(data) <- log2(assay(data))
      }
      if(input$fdr_correction=="BH"){
-       print("Correction is BH")
        diff_all <- test_limma_customized(data, type='all', paired = F)
-       print("######## data line 830 ##############")
 
      } else { # t-statistics-based
-       print("Correction is t-test basic")
        diff_all <- test_diff_customized(data, type = "all")
      }
      result_se <- add_rejections_customized(diff_all, alpha = input$p, lfc= input$lfc)
-     print("######## result_se line 837 ##############")
-      
      return(result_se)
    })
    
+   
    comparisons <-reactive ({
-     print("server.R line 810 COMPARISON()")
     if (input$exp == "TMT"  | input$exp == "DIA" | input$exp == "TMT-peptide") {
-      print("server.R line 812")
        temp<-capture.output(test_diff_customized(imputed_data(), type = "all"), type = "message")
        # temp<-capture.output(test_diff_customized(imputed_data(), type = "manual", 
        #                                           test = c("SampleTypeTumor"), design_formula = formula(~0+SampleType)),
@@ -1081,7 +1041,6 @@ server <- function(input, output, session) {
        unlist(strsplit(temp,","))
        ## Remove leading and trailing spaces
        trimws(temp)
-       print("temp line 822")
        #print(temp)
      } else if (input$exp == "LFQ" ) {
        temp<-capture.output(test_diff(imputed_data(),type='all'),type = "message")
@@ -1090,6 +1049,8 @@ server <- function(input, output, session) {
        unlist(strsplit(temp,","))
        ## Remove leading and trailing spaces
        trimws(temp)
+       print("############################")
+       print(temp)
      }
      
    })
@@ -1291,7 +1252,6 @@ server <- function(input, output, session) {
       } else if (input$exp == "TMT-peptide" & !input$all_peps_prot) {
         protein_selected <- data_result()[input$contents_rows_selected, c("Index")]
       } else {
-        print("Line 1220")
         protein_selected <- data_result()[input$contents_rows_selected, c("Gene Name")]
 
       }
@@ -1646,6 +1606,37 @@ server <- function(input, output, session) {
                 }})
    
 
+########## ADDED FILTERING OPTIONS ######################
+   observeEvent(input$analyze,{
+     inFile <- input$file_list_candidates
+     if (!is.null(inFile)){
+       shinyjs::enable("target_list_filter")
+     }
+     else {
+       shinyjs::disable("target_list_filter")
+     }
+   })
+   
+   list_candidates <- eventReactive(input$target_list_filter, {
+     inFile <- input$file_list_candidates
+     df <- read.csv(inFile$datapath, header=F)[,1]
+     return(df)
+   })
+   
+   observeEvent(input$target_list_filter,{
+     output$contents <- DT::renderDataTable({
+       idx <- which(data_result()[,'Gene Name'] %in% list_candidates())
+       df <- data_result()[idx,]
+       return(df)
+     },
+     options = list(scrollX = TRUE,
+                    autoWidth=TRUE,
+                    columnDefs= list(list(width = '400px', targets = c(-1))),
+                    lengthMenu = c(10, 20))
+     )
+   })
+
+   
 #### FILTERING OUT MODIFICATIONS   
    data_result_mods <- eventReactive(input$filter_mod, {
      idx <- grep(paste0(str_replace_all(input$mods_in_data, "[\\[\\].]", "\\\\\\0"), 
@@ -1749,7 +1740,6 @@ server <- function(input, output, session) {
                                                   input$p_adj, plot=F), input$protein_brush,
                                  xvar = "log2_fold_change", yvar = yvar)
       proteins_selected <- data_result()[c(input$contents_rows_selected), "Gene Name"]
-      print(proteins_selected)## get all rows selected
       return(c(proteins_selected, protein_tmp$protein))
     }
   })
@@ -1818,7 +1808,14 @@ server <- function(input, output, session) {
   })
   
   output$missval <- renderPlot({
-    missval_input()
+    if (is.null(missval_input())){
+      message_text <- "No missing values"
+      message_grob <- textGrob(message_text, gp = gpar(fontsize = 18))
+      p <- grid.draw(message_grob)
+      return(p)
+    } 
+    return(missval_input())
+    
   })
   
   output$detect <- renderPlot({
@@ -1885,12 +1882,10 @@ server <- function(input, output, session) {
   ## Enrichment inputs
   
     PIN_output_name <- eventReactive(input$PIN_analysis, {
-      print(1)
       make.names(paste0("pathfindr_output_",substr(Sys.time(),1,16)))  
     })
     
     PIN_results <-eventReactive(PIN_output_name(),{
-      print(2)
      withProgress(message = "PIN rendering is in progress",
                    detail = "Please wait for a while", value = 0, {
                      for (i in 1:20) {
@@ -1901,7 +1896,6 @@ server <- function(input, output, session) {
       
     if(!is.null(input$contrast_2)){
       contrast <- input$contrast_2
-      print(contrast)
       table <- data_result()
       
       pathfindR_input_df <- drop_na(table)
@@ -1936,7 +1930,6 @@ server <- function(input, output, session) {
 
 
   PIN_analysis <- eventReactive(PIN_results(), {
-    print(3)
     #req(PIN_results())
     file.rename("term_visualizations", as.character(PIN_output_name()))
     list.files(as.character(PIN_output_name()), pattern=".png", full.names = TRUE)})
@@ -2290,9 +2283,6 @@ output$download_density_svg<-downloadHandler(
       df <- dplyr::relocate(df, "Protein", "Gene", "Description", "Combined.Total.Peptides")
     } else { # DIA doesn't work yet
       # "Protein.Group", "Protein.Ids", "Protein.Names", "Genes", "First.Protein.Description" "name"
-      print("########### server.R line 1633 #############")
-      #print(processed_data)
-      print("############################################")
       df$Gene <- rowData(processed_data())$Genes
       df$Description <- rowData(processed_data())$First.Protein.Description
       df$Protein <- rowData(processed_data())$Protein.Ids
@@ -2382,14 +2372,10 @@ output$download_density_svg<-downloadHandler(
     df <- DGIAPI_R(genes = gene_names, interaction_sources = input$interaction_sources,
                     interaction_types = input$interaction_type, gene_categories = input$gene_categories, 
                     source_trust_levels = input$source_trust, antineoplastic_only = input$antineoplastic_only)
-    #result <- query$run_workflow()
-    
+
     if (is.null(df)) {
       df <- error_df
-    } else {
-      #df <- as.data.frame(do.call(rbind, result))
-      #print(df)
-    }
+    } 
     return(df)
   })
   
@@ -2425,7 +2411,6 @@ output$download_density_svg<-downloadHandler(
      image <- request_protter(prot_id, peptides, input$annotations_options)
 
    } else {
-     print(input$annotations_options)
      prot_id <- data_result()[c(input$contents_rows_selected)[1], "Protein ID"]
      image <- request_protter(prot_id, annotations=input$annotations_options)
    }

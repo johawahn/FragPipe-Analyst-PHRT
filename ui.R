@@ -245,7 +245,14 @@ ui <- function(request){shinyUI(
                                        "Type of FDR correction",
                                        choices =  c("Benjamini Hochberg"="BH",
                                                     "Local and tail area-based"="fdrtool"
-                                       ), selected= "BH")
+                                       ), selected= "BH"),
+                          fileInput('file_list_candidates', 'Upload .csv/.tsv table of candidates',
+                                    accept=c('text/tsv',
+                                             'text/tab-separated-values,text/plain',
+                                             '.tsv',
+                                             'text/csv',
+                                             'text/comma-separated-values,text/plain',
+                                             '.csv'))
                           # checkboxInput("s",
                           #               "Paired test", FALSE),
                           # numericInput("k_number",
@@ -485,9 +492,10 @@ ui <- function(request){shinyUI(
                                                              color = "pink"),
                                 br(),
                                 fluidRow(
-                                  column(4,actionButton("clear", "Deselect Rows")),
-                                  column(4,actionButton("original", "Refresh Table")),
-                                  column(4,conditionalPanel(
+                                  column(3,actionButton("clear", "Deselect Rows")),
+                                  column(3,actionButton("original", "Refresh Table")),
+                                  column(3,actionButton("target_list_filter", "Filter Target List")),
+                                  column(3,conditionalPanel(
                                   condition = "input.work_select == 'LFQ'",
                                   actionButton("filter_motif", "Filter motif")
                                 ))
@@ -587,7 +595,7 @@ ui <- function(request){shinyUI(
                                            fluidRow(
                                              box(
                                                  tags$p("Select one or more rows from Results Table to plot individual 
-                                                    protein intesities across conditions and replicates"),
+                                                    protein intensities across conditions and replicates"),
                                                  width = 12
                                              )
                                            ),
@@ -695,6 +703,7 @@ ui <- function(request){shinyUI(
                               shinycssloaders::withSpinner(plotOutput("coverage", height = 600), color = "pink"),
                               downloadButton('download_cov_svg', "Save svg")),
                      tabPanel(title = "Missing values - Heatmap",
+                              value = "missingval_heatmap_tab",
                               shinycssloaders::withSpinner(plotOutput("missval", height = 600), color = "pink"),
                               downloadButton('download_missval_svg', "Save svg")
                               ),
