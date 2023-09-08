@@ -346,8 +346,8 @@ add_rejections_customized <- function(diff, alpha = 0.05, lfc = 1) {
   }
 
   # get all columns with adjusted p-values and log2 fold changes
-  cols_p <- grep("_p.adj", colnames(row_data))
-  cols_diff <- grep("_diff", colnames(row_data))
+  cols_p <- grep("_p.adj$", colnames(row_data))
+  cols_diff <- grep("_diff$", colnames(row_data))
 
   # Mark differential expressed proteins by
   # applying alpha and log2FC parameters per protein
