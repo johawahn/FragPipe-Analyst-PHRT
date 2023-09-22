@@ -1,0 +1,24 @@
+############################################################
+############################################################
+# Manifest for local databases of FragPipe-Analyst-PHRT
+############################################################
+############################################################
+
+# Uniprot Human Proteome (proteome:UP000005640)
+  # Table of all available human proteins in Uniprot with their information 
+  # Date: 06/09/2023
+  ./uniprotkb_proteome_UP000005640_2023_09_06.tsv 
+
+# DGIdb drug prediction (DGIdb.org)
+  # Lists of all available query parameters for the interaction database
+  # Date: 28/08/2023
+  ./drug_prediction_DGIdb/gene_categories_list.txt
+  ./drug_prediction_DGIdb/interaction_sources_list.txt
+  ./drug_prediction_DGIdb/interaction_types_list.txt
+  ./drug_prediction_DGIdb/source_trust_level_list.txt
+
+# Surfaceome IDs (wlab.ethz.ch/surfaceome)
+  # List of surfaceome UniProt IDs
+  # Date: 15/08/2023
+  ./surfaceome_ids_Aug_2023.tsv
+

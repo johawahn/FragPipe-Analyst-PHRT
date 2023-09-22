@@ -326,7 +326,6 @@ server <- function(input, output, session) {
       if (input$exp == "LFQ") {
         if (input$soft_select == "Spectronaut"){
           inFile <- input$spectro_expr
-          annotation <- input$spectro_manifest
         }else if (input$soft_select == "quant_matrix"){
           inFile <- input$quant_expr
         }else{
@@ -352,12 +351,9 @@ server <- function(input, output, session) {
                                     header = TRUE, 
                                     sep=input$spectro_sep_quant)
         
-        temp_data_annot <-  read.csv(annotation$datapath,
-                                     header = TRUE, 
-                                     sep=input$spectro_sep_ano)
+
         
-        temp <- spectronaut_to_fragpipe(temp_data_quant, temp_data_annot)
-        temp_data <- as.data.frame(temp[[1]])
+        temp_data <- create_quant(temp_data_quant)
         
       } else if (input$soft_select == "quant_matrix"){
         temp_data_quant <-  read.csv(inFile$datapath,
@@ -365,8 +361,17 @@ server <- function(input, output, session) {
         
         temp_data <- expr_to_frag_input(temp_data_quant)
       } else if (input$work_select == 'LFQ'){
-        temp_data <- quant_lfq_to_tmt(inFile$datapath, input$lfq_pept_type)
-          
+        temp_data_df <- read.table(inFile$datapath,
+                                   header = TRUE,
+                                   fill= TRUE, # to fill any missing data
+                                   sep = "\t",
+                                   quote = "",
+                                   comment.char = "",
+                                   blank.lines.skip = F,
+                                   check.names = F)
+        
+        temp_data <- quant_lfq_to_tmt(temp_data_df, input$lfq_pept_type)
+
       } else{
         temp_data <- read.table(inFile$datapath,
                                 header = TRUE,
@@ -390,6 +395,7 @@ server <- function(input, output, session) {
       } else if (input$exp == "LFQ") {
         # handle - (dash) in experiment column
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
+        print(names(temp_data))
         validate(fragpipe_input_test(temp_data))
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
@@ -434,11 +440,9 @@ server <- function(input, output, session) {
       if (input$exp == "LFQ"){
         if(input$soft_select == "Spectronaut"){
           inFile <- input$spectro_manifest
-          quant <-  input$spectro_expr
 
         }else if(input$soft_select == "quant_matrix"){
           inFile <- input$quant_manifest
-          quant <-  input$quant_expr
         }else
           inFile <- input$lfq_manifest
 
@@ -457,8 +461,9 @@ server <- function(input, output, session) {
         return(NULL)
       if (input$exp == "TMT" | input$exp == "TMT-peptide") {
         if(input$work_select == "LFQ"){
-          
-          temp_df <- anot_lfq_to_tmt(inFile$datapath)
+          temp_df_file <- read.table(inFile$datapath, header = TRUE, sep='\t', 
+                                     check.names = F)
+          temp_df <- anot_lfq_to_tmt(temp_df_file)
         } else{
           temp_df <- read.table(inFile$datapath,
                               header = T,
@@ -504,22 +509,14 @@ server <- function(input, output, session) {
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
                                        sep=input$spectro_sep_ano)
-          
-          temp_data_expr <-  read.csv(quant$datapath,
-                                       header = TRUE, 
-                                       sep=input$spectro_sep_quant)
 
-          temp <- spectronaut_to_fragpipe(temp_data_expr, temp_data_annot)
-          temp_df <- as.data.frame(temp[[2]])
+          temp_df <- create_annotation(temp_data_annot)
           
         }else if (input$soft_select == "quant_matrix"){
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE)
-
-          temp_data_expr <-  read.csv(quant$datapath,
-                                      header = TRUE)
+          temp_df <- expr_manifest_to_frag_ano(temp_data_annot)
           
-          temp_df <- expr_manifest_to_frag_ano(temp_data_annot, temp_data_expr)
         }else{
           temp_df <- read.table(inFile$datapath,
                                 header = T,
@@ -565,6 +562,7 @@ server <- function(input, output, session) {
       } 
       return(temp_df)
     })
+    
    
     ###### TEMPORAL DATA ANALYSIS
     tempo_data_input<-reactive({NULL})
@@ -707,7 +705,7 @@ server <- function(input, output, session) {
     })
     
     observeEvent(input$download_prot_regression_plot_all,{
-      folder <- paste0(Sys.Date(), "_temporalOuput")
+      folder <- paste0(Sys.Date(), "_temporalOutput")
       dir.create(folder)
       
       pdf(paste0(folder, "/expression_value_all_prots.pdf"))
@@ -758,18 +756,34 @@ server <- function(input, output, session) {
    #    env()[['exp_design']]
    #  })
    
-   
 ### Reactive components
    processed_data <- eventReactive(start_analysis(),{
-
-     ## check which dataset
+     if((input$exp == "LFQ" | input$work_select == "LFQaaa")
+        & !is.null (fragpipe_data_input()) & !is.null (exp_design_input())){
+       
+       lfq_cols <- grep("Intensity", colnames(fragpipe_data_input()))
+       frag_data_samples <- unlist(lapply(colnames(fragpipe_data_input())[lfq_cols], 
+                                        FUN=function(x) {strsplit(x, " ")[[1]][[1]]}))
+       exp_design_samples <- exp_design_input()$sample
+       
+       matching_samples <- Reduce(intersect, list(frag_data_samples, exp_design_samples))
+       
+       fragpipe_data <-  reactive({select(fragpipe_data_input(), 
+                                          c(colnames(fragpipe_data_input())[-lfq_cols],
+                                            paste0(matching_samples, " Intensity")))})
+       exp_design <- reactive({filter(exp_design_input(), sample %in% matching_samples)})
+     
+     } else{
+      ## check which dataset
      if(!is.null (fragpipe_data_input() )){
        fragpipe_data <- reactive({fragpipe_data_input()})
      }
      
      if(!is.null (exp_design_input() )){
-       exp_design<-reactive({exp_design_input()})
+       exp_design <-reactive({exp_design_input()})
+      } 
      }
+     
      
      filtered_data <- fragpipe_data()
      
@@ -1347,7 +1361,12 @@ server <- function(input, output, session) {
    })
    
    tsne_input <- eventReactive(input$run_tsne,{
-     return(plot_tsne(dep(), input$n_max_iter))
+     if (input$tsne_imputed) {
+       data <- imputed_data()
+     } else {
+       data <- dep()
+     }
+     return(plot_tsne(data, input$n_max_iter))
    })
    
    
@@ -1929,12 +1948,12 @@ server <- function(input, output, session) {
 
 
 
-  PIN_analysis <- eventReactive(PIN_results(), {
+  PIN_analysis <- eventReactive(PIN_output_name(), {
     #req(PIN_results())
     file.rename("term_visualizations", as.character(PIN_output_name()))
     list.files(as.character(PIN_output_name()), pattern=".png", full.names = TRUE)})
-    #list.files("term_visualizations", pattern=".png", full.names = TRUE)})
     
+  
   output$spinner_PIN <- renderUI({
     #req(PIN_results())
     req(input$PIN_analysis)
@@ -1958,7 +1977,26 @@ server <- function(input, output, session) {
       list(src = x, alt = "NO ENRICHED PATHWAY!", height = "500")
     }, deleteFile = FALSE)
   })
-
+  
+  # Compile images into a pdf
+  observeEvent(
+    input$PIN_analysis,{
+      image_folder <- as.character(PIN_output_name())
+      # List all image files in the folder
+      image_files <- list.files(image_folder, pattern = "\\.(jpg|png|jpeg|gif|bmp)$", full.names = TRUE)
+      
+      pdf_file <- paste0(PIN_output_name(), "/compiled_images.pdf")
+      
+      pdf(pdf_file)
+      for (i in 2:length(image_files)) {
+        image <- image_read(image_files[i])
+        plot(image)
+      }
+      
+      dev.off()
+      
+    })
+  
   
   ##### Download Functions
   # example data
@@ -2092,14 +2130,14 @@ server <- function(input, output, session) {
                   sep =",") }
   )
   
-  output$downloadPIN_pdf <- downloadHandler(
-    filename = function() { 
-      paste("PIN_enrichment_",input$PIN_database, ".pdf", sep = "") }, ## use = instead of <-
-    content = function(file) {
-      images <- lapply(PIN_analysis(), image_read)
-      image_convert(images, file)
-      }
-  )
+  #output$downloadPIN_pdf <- downloadHandler(
+  #  filename = function() { 
+  #    paste("PIN_enrichment_",input$PIN_database, ".pdf", sep = "") }, ## use = instead of <-
+  # content = function(file) {
+  #    images <- lapply(PIN_analysis(), image_read)
+  #    image_convert(images, file)
+  #    }
+  #)
   
   ###### ==== DOWNLOAD PATHWAY TABLE ==== ####
   output$downloadPA <- downloadHandler(
@@ -2362,7 +2400,7 @@ output$download_density_svg<-downloadHandler(
     }
     
     if ('query_surfy_only' %in% input$query_significant_only){
-      surface_genes <- unlist(as.vector(read.table("drug_prediction_DGIdb/surfaceome_ids_Aug_2023.tsv",header=T)[2]))
+      surface_genes <- unlist(as.vector(read.table("local_database/surfaceome_ids_Aug_2023.tsv",header=T)[2]))
       gene_names = gene_names[which(gene_names %in% surface_genes)]
     }
     

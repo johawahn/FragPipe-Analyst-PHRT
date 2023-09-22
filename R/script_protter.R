@@ -1,5 +1,28 @@
-library(httr)
-library(cowplot)
+#' Obtain protein structure and sequence annotation using Protter 
+#' \url{wlab.ethz.ch/protter/}
+#' 
+#' \code{request_protter} Image of the structure and annotation of a requested protein
+#' 
+#' @param prot_ID string (REQUIRED),
+#' UniProt protein accession
+#'  
+#' @param peptides string,
+#' Comma separated list of peptides
+#' 
+#' @param annotations vector,
+#' List of wanted annotations, the ones available are:
+#' PTMs, variants, disulfide bonds, signal peptide
+#' 
+#' @return A magick_image
+#' vectorized magick image can be visualized using
+#' image_ggplot()
+#' 
+#' @examples:
+#' example <-  request_protter(prot_ID="Q10589")
+#' example  <-  request_protter(prot_ID="Q10589", 
+#'                  peptides="HLLQQELT,KKYYPSSQ",
+#'                  annotations=c('signal_pep','variants','ptms','disulf_bonds'))
+
 
 request_protter <- function(prot_ID, peptides="", annotations=c()){
   param <- list("up"=prot_ID,
@@ -38,6 +61,4 @@ request_protter <- function(prot_ID, peptides="", annotations=c()){
   magick_image <- image_read(image_content)
   return(magick_image)
 }
-
-#example <- request_protter("A0A0B4J2D5", annotations = c('disulf_bonds'))
 

@@ -37,6 +37,7 @@ library("maSigPro")
 
 
 options(shiny.reactlog=TRUE)
+#options(shiny.maxRequestSize = 1000 * 1024^2)
 
 conflict_prefer("box", "shinydashboard")
 conflict_prefer("select", "dplyr")

@@ -1,6 +1,19 @@
-####################################################
-#                 FUNCTIONS
-####################################################
+#' Spectronaut protein report to FragPipe protein level report
+#'
+#' \code{create_annotation} creates a TMT-type output file
+#'
+#' @param spectro_cond Data.frame,
+#' Protein level Spectronaut report
+#' 
+#' \code{create_quant} creates a TMT-type annotation file
+#' 
+#' @param spec_quant Data.frame,
+#' Annotation file 
+#' (output from Spectronaut).
+#' 
+#' @return A data.frame
+#' with the necessary columns for the FragPipe
+#' LFQ protein-level analysis
 
 create_annotation <- function(spectro_cond){
   #############################
@@ -38,14 +51,15 @@ create_annotation <- function(spectro_cond){
   return(spectro_cond)
 }
 
-#Remove contaminants
-remove_contam_spectro <- function(df){
-  return(df[-grep("CONT|iRT", df$`Protein ID`),]) 
-}
 create_quant <- function(spec_quant){
   #############################
   # TRANSFORM PROTEIN FILE
   #############################
+  
+  #Remove contaminants
+  remove_contam_spectro <- function(df){
+    return(df[-grep("CONT|iRT", df$`Protein ID`),]) 
+  }
   
   #Dictionary of Spectronaut to FragPipe equivalences (not samples)
   spec_to_frag <- c("PG.ProteinAccessions" = "Protein ID",
@@ -85,46 +99,10 @@ create_quant <- function(spec_quant){
   #Remove duplicated samples
   spectro_quant <-subset(spec_quant, select=!(duplicated(colnames(spec_quant))))
 
-  return(list(spectro_quant, spec_sample_names_short))
-}
-
-
-spectronaut_to_fragpipe <-  function(spectro_quant, spectro_cond){
-  #############################
-  # ENSURE THAT QUANTITY AND
-  # ANNOTATION FILE HAVE THE
-  # SAME SAMPLES
-  #############################
-
-  spec_list  <-  create_quant(spectro_quant)
-  spec = as.data.frame(spec_list[[1]])
-  spec_sample_names_short = unlist(spec_list[[2]])
-  
-  spec_annotations <- create_annotation(spectro_cond)
-
-  
-  correct_samples = intersect(spec_sample_names_short, spec_annotations$sample)
-  
-  row.names(spec_annotations) <-  spec_annotations$sample
-  spec_annotations = spec_annotations[correct_samples,]
-  
-  spec = spec[,c("Protein ID", "Gene", "Description", "Entry Name", "Protein", 
-                "Combined Total Peptides", paste(correct_samples, "Intensity", 
-                                                 sep=" "))]
-  spec = remove_contam_spectro(spec)
-  #write.table(spec, file='spec_quantities.tsv', quote=FALSE, sep='\t', 
-  #           col.names = TRUE, row.names = FALSE)
-  
-  
-  #write.table(spec_annotations, file='spec_annotations.tsv', quote=FALSE, sep='\t', 
-  #            col.names = TRUE, row.names = FALSE)
-  
-  return(list(spec, spec_annotations))
+  return(spectro_quant)
 }
 
 
 
-####################################################
-#                 MAIN
-####################################################
+
 
