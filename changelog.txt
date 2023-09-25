@@ -1,0 +1,13 @@
+# Changelog 
+
+### Added
+- DGIAPI_r.R: DIdb query script
+- frag_to_expr.R: FragPipe to expression matrix (unused)
+- LFQpep_to_TMTpep.R: Transform LFQ to TMT format
+- quant_matrix_to_frag.R: Intensity matrix to FragPipe LFQ format
+- script_protter.R: Protter query script
+- transform_spectro.R: Transform spectronaut to FragPipe LFQ format
+
+### Fixed
+- customized.R[350]: grep("_diff$", colnames(row_data)) Added a "$" to prevent error when a condition has "diff" in the name
+
