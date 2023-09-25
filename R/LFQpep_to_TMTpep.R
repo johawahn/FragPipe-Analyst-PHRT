@@ -28,7 +28,6 @@
 #' with the necessary columns for the TMT peptide
 #' level analysis
 
-<<<<<<< HEAD
 quant_lfq_to_tmt <- function(df_path, lfq_type){
   df <- read.table(df_path,
                    header = TRUE,
@@ -38,11 +37,8 @@ quant_lfq_to_tmt <- function(df_path, lfq_type){
                    comment.char = "",
                    blank.lines.skip = F,
                    check.names = F)
-=======
-quant_lfq_to_tmt <- function(df, lfq_type){
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
-  lfq_type <- 'Intensity'
-  
+                   
+
   if (lfq_type == "Intensity") {
     lfq_columns <- setdiff(grep("Intensity", colnames(df)),
                            grep("MaxLFQ", colnames(df)))
@@ -95,13 +91,10 @@ quant_lfq_to_tmt <- function(df, lfq_type){
                   "ModPeptides", samples)])
 }
 
-<<<<<<< HEAD
 anot_lfq_to_tmt <- function(df_path){
   df <- read.table(df_path, header = TRUE, sep='\t', 
                    check.names = F)
-=======
-anot_lfq_to_tmt <- function(df){
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
+
   df <- df[!colnames(df) %in% c("file")]
   
   df <- cbind("Index"=c(1:nrow(df)), 
@@ -115,15 +108,9 @@ quant_spectro_to_tmt <- function(spectro_df){
   info_proteins <- read.csv("/local/home/jwahnzavalet/FragPipe-Analyst-PHRT/local_database/uniprotkb_proteome_UP000005640_2023_09_06.tsv", 
                             sep='\t') %>%
     column_to_rownames('Entry')
-<<<<<<< HEAD
-  
+
   spectro_df <- spectro_df[-grep("CONT", spectro_df$PG.ProteinAccessions),] # Remove contaminants
   
-=======
-  
-  spectro_df <- spectro_df[-grep("CONT", spectro_df$PG.ProteinAccessions),] # Remove contaminants
-  
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
   process <- spectro_df %>%
     select(PG.ProteinAccessions, EG.PrecursorId, 
            colnames(.)[grep("EG.TotalQuantity",colnames(.))]) %>%

@@ -195,12 +195,12 @@ server <- function(input, output, session) {
          return(F)
        }
      }
-     
      shinyalert("In Progress!", "Data analysis has started, wait until table and plots
                 appear on the screen", type="info",
                 closeOnClickOutside = TRUE,
                 closeOnEsc = TRUE,
                 timer = 10000) # timer in miliseconds (10 sec)
+
      return(T)
    })
    
@@ -350,13 +350,9 @@ server <- function(input, output, session) {
         temp_data_quant <-  read.csv(inFile$datapath,
                                     header = TRUE, 
                                     sep=input$spectro_sep_quant)
-<<<<<<< HEAD
-
-=======
         
 
         
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
         temp_data <- create_quant(temp_data_quant)
         
       } else if (input$soft_select == "quant_matrix"){
@@ -365,23 +361,9 @@ server <- function(input, output, session) {
         
         temp_data <- expr_to_frag_input(temp_data_quant)
       } else if (input$work_select == 'LFQ'){
-<<<<<<< HEAD
         
         temp_data <- quant_lfq_to_tmt(inFile$datapath, input$lfq_pept_type)
-          
-=======
-        temp_data_df <- read.table(inFile$datapath,
-                                   header = TRUE,
-                                   fill= TRUE, # to fill any missing data
-                                   sep = "\t",
-                                   quote = "",
-                                   comment.char = "",
-                                   blank.lines.skip = F,
-                                   check.names = F)
-        
-        temp_data <- quant_lfq_to_tmt(temp_data_df, input$lfq_pept_type)
 
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
       } else{
         temp_data <- read.table(inFile$datapath,
                                 header = TRUE,
@@ -430,7 +412,11 @@ server <- function(input, output, session) {
       return(temp_data)
     })
     
-    
+    observeEvent(input$analyze, {
+      print("####################################")
+      print(input$work_select)
+      print("##################################")
+    })
     # observeEvent(input$analyze,{
     #   exp_design<-reactive({
     #     inFile<-input$file2
@@ -471,9 +457,8 @@ server <- function(input, output, session) {
         return(NULL)
       if (input$exp == "TMT" | input$exp == "TMT-peptide") {
         if(input$work_select == "LFQ"){
-          temp_df_file <- read.table(inFile$datapath, header = TRUE, sep='\t', 
-                                     check.names = F)
-          temp_df <- anot_lfq_to_tmt(temp_df_file)
+
+          temp_df <- anot_lfq_to_tmt(inFile$datapath)
         } else{
           temp_df <- read.table(inFile$datapath,
                               header = T,
@@ -519,10 +504,6 @@ server <- function(input, output, session) {
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
                                        sep=input$spectro_sep_ano)
-<<<<<<< HEAD
-          
-=======
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
 
           temp_df <- create_annotation(temp_data_annot)
           
@@ -772,20 +753,12 @@ server <- function(input, output, session) {
    
 ### Reactive components
    processed_data <- eventReactive(start_analysis(),{
-<<<<<<< HEAD
      if((input$exp == "LFQ")
-=======
-     if((input$exp == "LFQ" | input$work_select == "LFQaaa")
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
         & !is.null (fragpipe_data_input()) & !is.null (exp_design_input())){
        
        lfq_cols <- grep("Intensity", colnames(fragpipe_data_input()))
        frag_data_samples <- unlist(lapply(colnames(fragpipe_data_input())[lfq_cols], 
-<<<<<<< HEAD
-                                          FUN=function(x) {strsplit(x, " ")[[1]][[1]]}))
-=======
                                         FUN=function(x) {strsplit(x, " ")[[1]][[1]]}))
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
        exp_design_samples <- exp_design_input()$sample
        
        matching_samples <- Reduce(intersect, list(frag_data_samples, exp_design_samples))
@@ -794,21 +767,6 @@ server <- function(input, output, session) {
                                           c(colnames(fragpipe_data_input())[-lfq_cols],
                                             paste0(matching_samples, " Intensity")))})
        exp_design <- reactive({filter(exp_design_input(), sample %in% matching_samples)})
-<<<<<<< HEAD
-       
-     } else {
-        ## check which dataset
-       if(!is.null (fragpipe_data_input() )){
-         fragpipe_data <- reactive({fragpipe_data_input()})
-       }
-       
-       if(!is.null (exp_design_input() )){
-         exp_design<-reactive({exp_design_input()})
-       } 
-     }
-     
-     
-=======
      
      } else{
       ## check which dataset
@@ -820,7 +778,6 @@ server <- function(input, output, session) {
        exp_design <-reactive({exp_design_input()})
       } 
      }
->>>>>>> c6016ff631537cf9122263b7318d7df5214b312a
      
      
      filtered_data <- fragpipe_data()
