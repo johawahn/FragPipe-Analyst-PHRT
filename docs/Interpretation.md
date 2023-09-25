@@ -24,8 +24,32 @@ Correlation heatmap shows the correlation matrix between samples. Typically, you
 
 Coefficient of variation plot shows distribution of protein level coefficient of variation for each condition. Each plot also contains a vertical line representing median CVs percentage within that condition. Low coefficient of variation means the spread of data values is low relative to the mean.
 
+## t-Distributed Stochastic Neighbor Embedding
+
+![t-SNE Plot](Images/tsne_iris.png)
+
+t-SNE performs unsupervised non-linear dimentionality reduction, well suited for high-dimensional datasets. The goal is to 
+reveal local clusters and using (computationally intensive) pairwise distance calculations. It is primarily used for visualization and is less suitable for extracting meaningful feature representations.
+
 ## Enrichment Result
 
 ![Enrichment Plot](TMT-tutorial/GO_term.png)
 
 Enrichment analysis gives you a rough idea of changes between two different conditions. Our enrichment analysis is based on [Enrichr](https://maayanlab.cloud/Enrichr/) with background correction through hypergeometric test.
+
+## Protein-Protein Interaction Network
+
+![Protein-Protein Interaction Network](Images/PIN_pathfindR.png)
+
+## Drug Interaction Prediction
+
+![Drug-Gene interaction Table](Image/gdi_table.png)
+
+Drug-Gene interaction prediction using the [DGIdb](https://www.dgidb.org/) database. 
+
+## Protter Visualization
+
+![Protter Image](Image/protter_image.png)
+
+Visualization and annotation of a wanted protein structure using [Protter](http://wlab.ethz.ch/protter/). In the peptide
+pipeline, all of the identified peptides are annotated. 
