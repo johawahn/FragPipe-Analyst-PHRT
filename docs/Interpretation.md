@@ -43,13 +43,13 @@ Enrichment analysis gives you a rough idea of changes between two different cond
 
 ## Drug Interaction Prediction
 
-![Drug-Gene interaction Table](Image/gdi_table.png)
+![Drug-Gene interaction Table](Images/dgi_table.png)
 
 Drug-Gene interaction prediction using the [DGIdb](https://www.dgidb.org/) database. 
 
 ## Protter Visualization
 
-![Protter Image](Image/protter_image.png)
+![Protter Image](Images/protter_image.png)
 
 Visualization and annotation of a wanted protein structure using [Protter](http://wlab.ethz.ch/protter/). In the peptide
 pipeline, all of the identified peptides are annotated. 
