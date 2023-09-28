@@ -533,7 +533,7 @@ ui <- function(request){shinyUI(
                                                                                  inline = T,
                                                                                  selected = "excl")),
                                                           column(4, materialSwitch(inputId = "mod_w_motif", 
-                                                                                   label = "Filter motif only ", 
+                                                                                   label = HTML("Filter motif only<br>(off: mod+motif)"), 
                                                                                    status = "primary",
                                                                                    right=TRUE))
                                                         )
@@ -562,6 +562,7 @@ ui <- function(request){shinyUI(
                                                       tabBox(
                                                         title = "Result Plots",
                                                         width = 12,
+                                                        id="results_tabBox",
                                                         tabPanel(title = "Volcano plot",
                                                                  fluidRow(
                                                                    box(uiOutput("volcano_cntrst"), width = 5),
@@ -606,6 +607,12 @@ ui <- function(request){shinyUI(
                                                                  fluidRow(
                                                                    box(checkboxInput("show_row_names",
                                                                                      "Show rownames",
+                                                                                     value = F),
+                                                                       width = 6
+                                                                   ),
+                                                                   box(checkboxInput("show_selected",
+                                                                                     HTML("Show selected from <br> 
+                                                                                          Results Table"),
                                                                                      value = F),
                                                                        width = 6
                                                                    )
@@ -653,6 +660,36 @@ ui <- function(request){shinyUI(
                                                                    shinycssloaders::withSpinner(plotlyOutput("protein_plot"), color = "pink")
                                                                    #downloadButton('downloadProtein', 'Download Plot')
                                                                  )
+                                                        ),
+                                                        tabPanel(title= "Candidates Heatmap",
+                                                                 value= "candidate_heatmap",
+                                                                 fluidRow(
+                                                                   column(3, box(checkboxInput("candi_show_row_names",
+                                                                                     "Show rownames",
+                                                                                     value = F),
+                                                                       width = 6
+                                                                   )),
+                                                                   column(5, box(checkboxInput("candi_only_sig",
+                                                                                     "Show only significant candidates",
+                                                                                     value = F),
+                                                                       width = 6
+                                                                   )),
+                                                                 ),
+                                                                 fluidRow(
+                                                                   shinycssloaders::withSpinner(plotOutput("candidate_heatmap", height = 600), color = "pink")
+                                                                 ),
+                                                                 fluidRow(
+                                                                   # box(numericInput("cluster_number",
+                                                                   #                  "Cluster to download",
+                                                                   #                  min=1, max=6, value = 3), width = 6),
+                                                                   box(
+                                                                     # downloadButton('downloadCluster',"Save Cluster"),
+                                                                     downloadButton('download_cd_hm_svg', "Save svg"),
+                                                                     width = 5)
+                                                                 ),
+                                                                 # align save button
+                                                                 tags$style(type='text/css', "#downloadCluster {margin-top: 25px;}"),
+                                                                 tags$style(type='text/css', "#download_hm_svg {margin-top: 25px;}")
                                                         )
                                                       ) # tabBox end
                                                     ), conditionalPanel(
@@ -880,6 +917,7 @@ ui <- function(request){shinyUI(
                                                                  column(1, offset=1, actionButton("previous", "Previous")),
                                                                  column(1, offset=1, actionButton("next", "Next")),
                                                                  column(4, offset=1, downloadButton('downloadPIN', 'Download Table')),
+                                                                 column(4, offset=1, downloadButton('downloadPIN_img', 'Download Images'))
                                                                ),
                                                                fluidRow(
                                                                  tags$p("Note: Images are saved under 'pathfindr_output_{date}' in the app folder")

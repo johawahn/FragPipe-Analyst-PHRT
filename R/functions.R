@@ -164,7 +164,7 @@ get_cluster_heatmap <- function(dep, type = c("contrast", "centered"),
   
   if (nrow(filtered) == 0){
     return(ggplot() +
-             annotate("text", x = 4, y = 25, size=8, label = "No differential expressed genes available for the heatmap") +
+             annotate("text", x = 4, y = 25, size=8, label = "No differential expressed genes\n available for the heatmap") +
              theme_void())
   }
   

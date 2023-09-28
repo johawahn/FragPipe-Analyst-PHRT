@@ -37,8 +37,13 @@ server <- function(input, output, session) {
   })
   
   observeEvent(start_analysis() ,{
+    if (!is.null(input$file_list_candidates)){
+      showTab(inputId="results_tabBox", target="candidate_heatmap")
+    } else{
+      hideTab(inputId="results_tabBox", target="candidate_heatmap")
+    }
+    
     if (input$exp == "LFQ"){
-
       exp <- exp_design_input()
       if (all(is.na(exp$replicate))) {
         showTab(inputId = "tab_panels", target = "quantification_panel")
@@ -411,12 +416,7 @@ server <- function(input, output, session) {
 
       return(temp_data)
     })
-    
-    observeEvent(input$analyze, {
-      print("####################################")
-      print(input$work_select)
-      print("##################################")
-    })
+
     # observeEvent(input$analyze,{
     #   exp_design<-reactive({
     #     inFile<-input$file2
@@ -1058,8 +1058,7 @@ server <- function(input, output, session) {
        unlist(strsplit(temp,","))
        ## Remove leading and trailing spaces
        trimws(temp)
-       print("############################")
-       print(temp)
+
      }
      
    })
@@ -1123,17 +1122,35 @@ server <- function(input, output, session) {
    })
    
    ### Heatmap for differentially expressed proteins
-   
+
   heatmap_cluster<-eventReactive({
      input$analyze
      input$show_row_names
+     input$show_selected
    }, { 
      if(input$analyze==0 | !start_analysis()){
        return()
      }
-     heatmap_list <- get_cluster_heatmap(dep(),
+     
+     #Show selected rows regardless of significance
+     if(input$show_selected){
+       if(length(c(input$contents_rows_selected))==0){
+         return(ggplot() +
+                  annotate("text", x = 4, y = 25, size=8, label = "Select one or more rows\n from Results Table ") +
+                  theme_void())
+       }
+       alpha_heat <- 1
+       lfc_heat <- 0
+       se <- dep()[c(input$contents_rows_selected),]
+    #Show only significant 
+     } else{
+       alpha_heat <- input$p
+       lfc_heat <- input$lfc
+       se <- dep()
+     }
+     heatmap_list <- get_cluster_heatmap(se,
                                          type="centered", kmeans = F,
-                                         alpha = input$p, lfc = input$lfc,
+                                         alpha = alpha_heat, lfc = lfc_heat,
                                          indicate = "condition", exp=input$exp, show_row_names=input$show_row_names
      )
      return(heatmap_list)
@@ -1142,7 +1159,12 @@ server <- function(input, output, session) {
    
    heatmap_input <- reactive({
      heatmap_list <- heatmap_cluster()
-     heatmap_list[[1]]
+     if ((class(heatmap_list)=="list")[1]){
+       return(heatmap_list[[1]])
+     } else {
+       return(heatmap_list)}
+     
+     
    })
    
    ### Volcano Plot
@@ -1252,7 +1274,7 @@ server <- function(input, output, session) {
         data <- imputed_data()
       } else {
         data <- processed_data()
-      } 
+      }
       if (input$exp == "TMT" & metadata(data)$level == "protein") {
         protein_selected <- data_result()[input$contents_rows_selected, c("Protein ID")]
       } else if (input$exp == "TMT-peptide" & input$all_peps_prot){ # All the precursors from the same protein are highlighted
@@ -1278,7 +1300,16 @@ server <- function(input, output, session) {
 
    ## QC plots inputs
    missval_input <- reactive({
-     plot_missval_customized(filtered_data())
+     
+     result <- tryCatch({
+       result <- plot_missval_customized(filtered_data())
+     }, error = function(e) {
+       message_text <- "No missing values"
+       message_grob <- textGrob(message_text, gp = gpar(fontsize = 18))
+       result <- grid.draw(message_grob)
+       return(result)
+     })
+     return(result)
    })
    
    detect_input <- reactive({
@@ -1405,12 +1436,20 @@ server <- function(input, output, session) {
    
 
   ##### Get results dataframe from Summarizedexperiment object
-   data_result <- eventReactive(input$analyze, {
-     if(input$work_select=='LFQ'){
-     get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE)
-       } else{get_results_proteins(dep(), input$exp)}}
-     )
+   data_result <- reactiveVal(0)
+   data_result_og <- reactiveVal(0)
    
+    observeEvent(input$analyze, {
+      if(input$work_select=='LFQ'){data_result(get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE))
+        } else {
+          data_result(get_results_proteins(dep(), input$exp))
+          }
+      
+      data_result_og(data_result())
+      })
+   
+    
+    
     # Obtain protein level table from peptide level LFQ report
     data_result_pep <- eventReactive(input$analyze, {
       if(input$work_select=='LFQ'){as.data.frame(assay(dep())) %>% 
@@ -1460,10 +1499,18 @@ server <- function(input, output, session) {
     }})
     
     # Result table for protein level (LFQ-peptide)
-    data_result_pep_prot_level <- eventReactive(input$analyze, {
+    
+    data_result_pep_prot_level <- reactiveVal(0)
+    data_result_pep_prot_level_og <- reactiveVal(0)
+    
+    observeEvent(input$analyze, {
       if(input$work_select=='LFQ'){
-        get_results_proteins(result_se_sum_prot(), "LFQ-peptide")
-      }})
+        data_result_pep_prot_level(get_results_proteins(result_se_sum_prot(), "LFQ-peptide"))
+        data_result_pep_prot_level_og(data_result_pep_prot_level())
+      }
+      })
+    
+    
     
     # Plot reactive volcano 
     observeEvent(input$analyze,
@@ -1565,8 +1612,8 @@ server <- function(input, output, session) {
    
    observeEvent(input$original,{
      output$contents <- DT::renderDataTable({
-       df<- data_result()
-       return(df)
+       data_result(data_result_og())
+       return(data_result())
      },
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
@@ -1578,10 +1625,11 @@ server <- function(input, output, session) {
    # Plot volcano of summed proteins table
    observeEvent(input$work_select,
                 {if(input$work_select=='LFQ'){
+                  # First extract modifications present in the data
                   output$mod_options <- renderUI({
                     selectInput("mods_in_data",
                                 label = "Select Modification",
-                                choices = unique(na.omit(str_extract(data_result()$`Modified Peptides`, 
+                                choices = unique(na.omit(str_extract(data_result_og()$`Modified Peptides`, 
                                                                      '[:upper:]\\[\\d+\\.\\d+\\]'))),
                                 multiple = T,
                                 selected = "")
@@ -1605,7 +1653,7 @@ server <- function(input, output, session) {
                   
                   observeEvent(input$pep_original,{
                     output$pep_contents <- DT::renderDataTable({
-                      df<- data_result_pep_prot_level()
+                      df<- data_result_pep_prot_level_og()
                       return(df)
                     },
                     options = list(scrollX = TRUE,
@@ -1620,28 +1668,28 @@ server <- function(input, output, session) {
                 }})
    
 
-########## ADDED FILTERING OPTIONS ######################
-   observeEvent(input$analyze,{
-     inFile <- input$file_list_candidates
-     if (!is.null(inFile)){
-       shinyjs::enable("target_list_filter")
+########## FILTERING CANDIDATE LIST ######################
+   observe(
+     if (!is.null(input$file_list_candidates)){
+       shinyjs::show("target_list_filter")
+     } else{
+       shinyjs::hide("target_list_filter")
      }
-     else {
-       shinyjs::disable("target_list_filter")
-     }
-   })
+   )
    
-   list_candidates <- eventReactive(input$target_list_filter, {
+
+   list_candidates <- eventReactive(input$file_list_candidates, {
      inFile <- input$file_list_candidates
      df <- read.csv(inFile$datapath, header=F)[,1]
      return(df)
    })
    
    observeEvent(input$target_list_filter,{
+     print('0')
      output$contents <- DT::renderDataTable({
        idx <- which(data_result()[,'Gene Name'] %in% list_candidates())
-       df <- data_result()[idx,]
-       return(df)
+       data_result(data_result()[idx,])
+       return(data_result())
      },
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
@@ -1649,31 +1697,85 @@ server <- function(input, output, session) {
                     lengthMenu = c(10, 20))
      )
    })
+   
+   candidate_heatmap_cluster<-eventReactive({
+     input$analyze
+     input$candi_show_row_names
+     input$candi_only_sig
+   }, { 
+     if(input$analyze==0 | !start_analysis()){
+       return()
+     }
+     idx <- which(data_result_og()[,'Gene Name'] %in% list_candidates())
+     
+     if (input$candi_only_sig){
+       alpha_candi <- input$p
+       lfc_candi <- input$lfc
+     } else{
+       alpha_candi <- 1
+       lfc_candi <- 0
+     }
+     candidate_heatmap_list <- get_cluster_heatmap(dep()[idx,],
+                                                   type="centered", kmeans = F,
+                                                   alpha = alpha_candi, lfc = lfc_candi,
+                                                   indicate = "condition", exp='LFQ', show_row_names=input$candi_show_row_names
+     )
+     return(candidate_heatmap_list)
+   })
+   
+   
+   candidate_heatmap_input <- reactive({
+     candidate_heatmap_list <- candidate_heatmap_cluster()
+     if ((class(candidate_heatmap_list)=="list")[1]){
+       return(candidate_heatmap_list[[1]])
+     } else {
+       return(candidate_heatmap_list)}
+     
+     
+   })
+   
+   
+   output$candidate_heatmap<-renderPlot({
+     print(3)
+     withProgress(message = 'Heatmap rendering is in progress',
+                  detail = 'Please wait for a while', value = 0, {
+                    for (i in 1:15) {
+                      incProgress(1/15)
+                      Sys.sleep(0.25)
+                    }
+                  })
+     candidate_heatmap_input()
+   })
 
    
-#### FILTERING OUT MODIFICATIONS   
-   data_result_mods <- eventReactive(input$filter_mod, {
+#### FILTERING OUT MODIFICATIONS
+   
+   #First filter at the peptide level
+   observeEvent(input$filter_mod, {
+     data_result(data_result_og())
      idx <- grep(paste0(str_replace_all(input$mods_in_data, "[\\[\\].]", "\\\\\\0"), 
                         collapse="|"), data_result()$`Modified Peptides`)
      if (input$keep_mod == "excl"){
        idx <- idx*-1
      }
-     return(data_result()[idx,])
+     data_result(data_result()[idx,])
    })
    
-   
-   data_result_pep_mods <- eventReactive(input$filter_mod, {
-     idx_prots <- which(data_result_pep_prot_level()$`ProteinID` %in% unique(data_result_mods()$`Protein ID`))
-     if (input$keep_motif == "excl"){
+   #Then filter at the protein level
+   observeEvent(input$filter_mod, {
+     data_result_pep_prot_level(data_result_pep_prot_level_og())
+     idx_prots <- which(data_result_pep_prot_level()$`ProteinID` %in% unique(data_result()$`Protein ID`))
+     if (input$keep_mod == "excl"){
        idx_prots <- idx_prots*-1
      }
-     return(data_result_pep_prot_level()[idx_prots,])
+     data_result_pep_prot_level(data_result_pep_prot_level()[idx_prots,])
    })
    
-   #Keep only the modifications
+
+   #Render the tables
    observeEvent(input$filter_mod,{
      output$contents <- DT::renderDataTable({
-       df<- data_result_mods()
+       df<- data_result()
        return(df)
      },
      options = list(scrollX = TRUE,
@@ -1682,31 +1784,30 @@ server <- function(input, output, session) {
                     lengthMenu = c(10, 20)))
      
      output$pep_contents <- DT::renderDataTable({
-       df<- data_result_pep_mods()
+       df<- data_result_pep_prot_level()
        return(df)
      },
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
                     columnDefs= list(list(width = '400px', targets = c(-1))),
                     lengthMenu = c(10, 20)))
-     })
+   })
    
 ##### FILTERING OUT MOTIFS
-
+  
+   #Filter motif at the peptide level
    observeEvent(input$filter_motif,{
-     
-     if(!input$mod_w_motif){
-       data_table <- data_result_mods()
-     } else {
-       data_table <- data_result()
+     #If toggle is on, only motif will be filtered, else motif and modification will be filtered
+     if (input$mod_w_motif){
+       data_result(data_result_og())
      }
-     idx <- str_detect(data_table$`Index`, input$motif_re)
      
+     idx <- str_detect(data_result()$`Index`, input$motif_re)
      if(input$keep_motif == 'excl'){
        idx <- idx*-1
      }
      output$contents <- DT::renderDataTable({
-       df<- data_table[idx,]
+       df<- data_result()[idx,]
        return(df)
      },
      options = list(scrollX = TRUE,
@@ -1715,23 +1816,29 @@ server <- function(input, output, session) {
                     lengthMenu = c(10, 20)))
    })
    
-   observeEvent(input$excl_motif,{
-     if(exists("data_result_mods()") | !is.null(data_result_mods())){
-       data_table <- data_result_mods()
-     } else {
-       data_table <- data_result()
+   #Filter motif at the protein level
+   observeEvent(input$filter_motif, {
+     if (input$mod_w_motif){
+       data_result_pep_prot_level(data_result_pep_prot_level())
      }
      
-     idx <- str_detect(data_table$`Index`, input$motif_re)
-     output$contents <- DT::renderDataTable({
-       df<- data_table[-idx,]
+     idx_prots <- which(data_result_pep_prot_level()$`ProteinID` %in% unique(data_result()$`Protein ID`))
+     if (input$keep_motif == "excl"){
+       idx_prots <- idx_prots*-1
+     }
+     data_result_pep_prot_level(data_result_pep_prot_level()[idx_prots,])
+     
+     output$pep_contents <- DT::renderDataTable({
+       df<- data_result_pep_prot_level()
        return(df)
      },
      options = list(scrollX = TRUE,
                     autoWidth=TRUE,
                     columnDefs= list(list(width = '400px', targets = c(-1))),
                     lengthMenu = c(10, 20)))
+     
    })
+   
   protein_name_brush<- reactive({
     if (input$p_adj) {
       yvar <- "adjusted_p_value_-log10"
@@ -1812,6 +1919,7 @@ server <- function(input, output, session) {
     }
   })
  
+
   ### QC Outputs
   output$sample_corr <-renderPlot({
     correlation_input()
@@ -1822,13 +1930,7 @@ server <- function(input, output, session) {
   })
   
   output$missval <- renderPlot({
-    if (is.null(missval_input())){
-      message_text <- "No missing values"
-      message_grob <- textGrob(message_text, gp = gpar(fontsize = 18))
-      p <- grid.draw(message_grob)
-      return(p)
-    } 
-    return(missval_input())
+    missval_input()
     
   })
   
@@ -1893,12 +1995,14 @@ server <- function(input, output, session) {
     })
   })
   
-  ## Enrichment inputs
-  
+  ## Protein-Protein Interaction Network (PIN) inputs
+    
+    # Create a temporary file where the PIN analysis will be saved
     PIN_output_name <- eventReactive(input$PIN_analysis, {
-      make.names(paste0("pathfindr_output_",substr(Sys.time(),1,16)))  
+      file.path(tempdir())  
     })
     
+    #Perform Analysis 
     PIN_results <-eventReactive(PIN_output_name(),{
      withProgress(message = "PIN rendering is in progress",
                    detail = "Please wait for a while", value = 0, {
@@ -1912,10 +2016,9 @@ server <- function(input, output, session) {
       contrast <- input$contrast_2
       table <- data_result()
       
-      pathfindR_input_df <- drop_na(table)
-      pathfindR_input_df <- table[c(colnames(table)[grep("Gene", colnames(table))],
+      pathfindR_input_df <- drop_na(table[c(colnames(table)[grep("Gene", colnames(table))],
                                     paste0(contrast, "_log2 fold change"),
-                                    paste0(contrast, "_p.val"))]
+                                    paste0(contrast, "_p.val"))])
       
       colnames(pathfindR_input_df) <- c("Gene.symbol", "logFC", "adj.P.Val")
       
@@ -1940,15 +2043,18 @@ server <- function(input, output, session) {
       return(output)
     }
   })
-
-
-
-  PIN_analysis <- eventReactive(PIN_output_name(), {
+  
+    #Move downloaded images to temporary folder and delete the created folder ("term_visualization")
+    PIN_analysis <- eventReactive(PIN_results(), {
     #req(PIN_results())
-    file.rename("term_visualizations", as.character(PIN_output_name()))
+    print(PIN_output_name())
+    file.copy(from=paste0("term_visualizations/", list.files("term_visualizations")), 
+              to=as.character(PIN_output_name()))
+    file.remove(from=paste0("term_visualizations/", list.files("term_visualizations")))
+    file.remove(from="term_visualizations")
     list.files(as.character(PIN_output_name()), pattern=".png", full.names = TRUE)})
     
-  
+  #Show images as gallery
   output$spinner_PIN <- renderUI({
     #req(PIN_results())
     req(input$PIN_analysis)
@@ -1958,6 +2064,7 @@ server <- function(input, output, session) {
   
   index <- reactiveVal(1)
   
+  #Browse images
   observeEvent(input[["previous"]], {
     index(max(index()-1, 1))
   })
@@ -1965,7 +2072,7 @@ server <- function(input, output, session) {
     index(min(index()+1, length(PIN_analysis())))
   })
   
-  
+  #Display selected image (if no images then text appears)
   observeEvent(input$PIN_analysis, {
     output$PIN_enrichment<-renderImage({
       x <- PIN_analysis()[index()] 
@@ -1973,24 +2080,6 @@ server <- function(input, output, session) {
     }, deleteFile = FALSE)
   })
   
-  # Compile images into a pdf
-  observeEvent(
-    input$PIN_analysis,{
-      image_folder <- as.character(PIN_output_name())
-      # List all image files in the folder
-      image_files <- list.files(image_folder, pattern = "\\.(jpg|png|jpeg|gif|bmp)$", full.names = TRUE)
-      
-      pdf_file <- paste0(PIN_output_name(), "/compiled_images.pdf")
-      
-      pdf(pdf_file)
-      for (i in 2:length(image_files)) {
-        image <- image_read(image_files[i])
-        plot(image)
-      }
-      
-      dev.off()
-      
-    })
   
   
   ##### Download Functions
@@ -2125,14 +2214,28 @@ server <- function(input, output, session) {
                   sep =",") }
   )
   
-  #output$downloadPIN_pdf <- downloadHandler(
-  #  filename = function() { 
-  #    paste("PIN_enrichment_",input$PIN_database, ".pdf", sep = "") }, ## use = instead of <-
-  # content = function(file) {
-  #    images <- lapply(PIN_analysis(), image_read)
-  #    image_convert(images, file)
-  #    }
-  #)
+  output$downloadPIN_img <- downloadHandler(
+    
+    # For PDF output, change this to "report.pdf"
+    filename = "prot_prot_interaction_network.pdf",
+    content = function(file) {
+      image_folder <- as.character(PIN_output_name())
+      # List all image files in the folder
+      image_files <- list.files(image_folder, pattern = "\\.(jpg|png|jpeg|gif|bmp)$", full.names = TRUE)
+      
+      pdf_file <-file
+      
+      pdf(pdf_file)
+      for (i in 2:length(image_files)) {
+        image <- image_read(image_files[i])
+        plot(image)
+      }
+      
+      # Close the PDF device
+      dev.off()
+    }
+    
+  )
   
   ###### ==== DOWNLOAD PATHWAY TABLE ==== ####
   output$downloadPA <- downloadHandler(
@@ -2165,7 +2268,7 @@ output$download_hm_svg<-downloadHandler(
       # Copy the report file to a temporary directory before processing it, in
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
-      tempReport <- file.path(tempdir(), "LFQ_report.Rmd")
+      tempReport <- file.path(tempdir(), paste0(input$exp, "_report.Rmd"))
       file.copy(paste0("./reports/", input$exp, "_report.Rmd"), tempReport, overwrite = TRUE)
       
       sig_proteins<-dep() %>%
@@ -2191,6 +2294,7 @@ output$download_hm_svg<-downloadHandler(
                      pca_input = pca_static_input,
                      coverage_input= coverage_input,
                      correlation_input =correlation_input,
+                     tsne_input=tsne_input,
                      heatmap_input = heatmap_input,
                      cvs_input = cvs_input,
                      volcano_input = volcano_input,

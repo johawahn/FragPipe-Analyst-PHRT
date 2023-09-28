@@ -11,6 +11,7 @@ params:
   coverage_input: NA
   pca_input: NA
   correlation_input: NA
+  tsne_input: NA
   missval_input: NA
   detect_input: NA
   density_input: NA
@@ -92,7 +93,13 @@ print(params$coverage_input())
 ```
 \pagebreak
 
+### t-distributed Stochastic Neighbor Embedding (t-SNE)
 
+```{r tsne_plot, echo=FALSE, fig.height= 4}
+print(params$tsne_input())
+```
+
+\pagebreak
 
 ## Missing Value handling
 
