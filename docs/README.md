@@ -25,10 +25,10 @@ To use FragPipe-Analyst-PHRT, the user needs to prepare two files. One is a quan
 
 ### Peptide
 
-|                       | TMT                       | LFQ                           |
-|-----------------------|---------------------------|-------------------------------|
-| Quantification Table  | abundance_peptide_MD.tsv  | combined_modified_peptide.tsv |
-| Metadata              | experiment_annotation.tsv | experiment_annotation.tsv     |
+|                       | TMT                       | LFQ                           |Spectronaut                |
+|-----------------------|---------------------------|-------------------------------|---------------------------|
+| Quantification Table  | abundance_peptide_MD.tsv  | combined_modified_peptide.tsv |ElutionGroup_report.csv    |
+| Metadata              | experiment_annotation.tsv | experiment_annotation.tsv     |ConditionSetup.csv         |
 
 ### Temporal
 
@@ -36,6 +36,8 @@ To use FragPipe-Analyst-PHRT, the user needs to prepare two files. One is a quan
 |-----------------------|------------------------------------|
 | Quantification Table  | intensity_matrix.csv               |
 | Metadata              | temporal_experiment_annotation.tsv |
+
+
 
 # LFQ
 
@@ -248,6 +250,28 @@ Necessary columns (does not matter if there are more):
 
 | Peptide Sequence | Modified Sequence | Charges | Protein ID | Gene | aspirin_1 Intensity | aspirin_2 Intensity | aspirin_3 Intensity | control_1 Intensity | control_2 Intensity | control_3 Intensity |
 |------------------|-------------------|---------|------------|------|---------------------|---------------------|---------------------|---------------------|---------------------|---------------------|
+
+## Spectronaut
+
+Required input:
+
+| PG.ProteinAccessions | EG.PrecursorId | [1] sample1.EG.TotalQuantity | [2] sample2.EG.TotalQuantity | [3] sample3.EG.TotalQuantity |
+|----------------------|----------------|------------------------------|------------------------------|------------------------------|
+
+(Annotation file is the same as Protein level spectronaut report)
+
+## Candidate file
+
+Single column csv with no header
+
+| HOXD3  |
+| CXCL9  |
+| CXCL10 |
+| CXCL11 |
+| CXCL12 |
+| CXCL13 |
+| HOXA3  |
+| PXYLP1 |
 
 # Temporal
 
