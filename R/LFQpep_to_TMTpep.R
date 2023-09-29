@@ -28,17 +28,7 @@
 #' with the necessary columns for the TMT peptide
 #' level analysis
 
-quant_lfq_to_tmt <- function(df_path, lfq_type){
-  df <- read.table(df_path,
-                   header = TRUE,
-                   fill= TRUE, # to fill any missing data
-                   sep = "\t",
-                   quote = "",
-                   comment.char = "",
-                   blank.lines.skip = F,
-                   check.names = F)
-                   
-
+quant_lfq_to_tmt <- function(df, lfq_type){
   if (lfq_type == "Intensity") {
     lfq_columns <- setdiff(grep("Intensity", colnames(df)),
                            grep("MaxLFQ", colnames(df)))
@@ -60,14 +50,6 @@ quant_lfq_to_tmt <- function(df_path, lfq_type){
                         "Protein ID", "Gene", samples_og)
   
   df_sub <-  subset(df, select=interesting_cols)
-  
- # replace_commas_with_periods <- function(column) {
- #   gsub(",", ".", column)
- # }
-  
-  # Apply the function to all columns in the dataframe
-#  df_sub[lfq_columns] <- lapply(df_sub[lfq_columns], replace_commas_with_periods)
-#  df_sub[lfq_columns] <- apply(df_sub[lfq_columns], 2, FUN=as.numeric)
   
   #Add index and reference intensity
   df_sub <- cbind("Index"=paste(df$`Protein ID`, df$`Peptide Sequence`, sep="_"), 
@@ -91,10 +73,9 @@ quant_lfq_to_tmt <- function(df_path, lfq_type){
                   "ModPeptides", samples)])
 }
 
-anot_lfq_to_tmt <- function(df_path){
-  df <- read.table(df_path, header = TRUE, sep='\t', 
-                   check.names = F)
-
+anot_lfq_to_tmt <- function(df){
+  
+  
   df <- df[!colnames(df) %in% c("file")]
   
   df <- cbind("Index"=c(1:nrow(df)), 
@@ -105,10 +86,16 @@ anot_lfq_to_tmt <- function(df_path){
 }
 
 quant_spectro_to_tmt <- function(spectro_df){
-  info_proteins <- read.csv("/local/home/jwahnzavalet/FragPipe-Analyst-PHRT/local_database/uniprotkb_proteome_UP000005640_2023_09_06.tsv", 
+  info_proteins <- read.csv("local_database/uniprotkb_proteome_UP000005640_2023_09_06.tsv", 
                             sep='\t') %>%
     column_to_rownames('Entry')
-
+  
+  ptms_df <- read.csv('local_database/230929_spectro_ptms.csv',
+                      header=F, row.names = 1)
+  
+  ptms <- unlist(as.vector(ptms_df))
+  names(ptms) <- row.names(ptms_df)
+  
   spectro_df <- spectro_df[-grep("CONT", spectro_df$PG.ProteinAccessions),] # Remove contaminants
   
   process <- spectro_df %>%
@@ -122,15 +109,21 @@ quant_spectro_to_tmt <- function(spectro_df){
     mutate('Charges'=unlist(lapply(spectro_df$EG.PrecursorId, function(x){unlist(strsplit(x,"\\_."))[3]})),
            .after='Peptide Sequence') %>%
     mutate('Gene'=info_proteins[spectro_df$PG.ProteinAccessions,]$Gene.Names..primary.,
-           .after='Charges') 
+           .after='Charges') %>%
+    mutate("Modified Sequence" = str_replace_all(`Modified Sequence`, ptms))
   
   sample_idx <- grep("Quantity",colnames(process))
+  process[,sample_idx] <- apply(process[,sample_idx], 2, function(x){str_replace_all(x, ',' , '.')})
+  process[,sample_idx] <- apply(process[,sample_idx], 2, as.numeric)
+  
   colnames(process)[sample_idx] <- paste0(unlist(lapply(colnames(process)[sample_idx], 
                                                         function(x){str_match(x, "\\.{2}(.*?)\\.EG")[,2]})),
                                           " Intensity")
   
-  
-  
+  if(sum(duplicated(colnames(process)))!=0){
+    stop(safeError("You have duplicated samples in the Peptide report.\n 
+                   Please correct this in both annotation and experimental reports"))
+  }
   
   process_tmt <- quant_lfq_to_tmt(process, 'Intensity')
   return(process_tmt)
@@ -140,11 +133,3 @@ anot_spectro_to_tmt <- function(spectro_ano){
   # First transform to FragPipe anotation then TMT
   return(anot_lfq_to_tmt(create_annotation(spectro_ano))) 
 }
-
-
-
-
-
-
-
-

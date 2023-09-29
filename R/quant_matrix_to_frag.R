@@ -20,8 +20,10 @@
 
 
 expr_to_frag_input <- function(quant_matrix){
+  
   sample_names <- colnames(quant_matrix)[2:ncol(quant_matrix)]
-  colnames(quant_matrix)[-1] <- paste(colnames(quant_matrix[-1]), "Intensity") 
+  colnames(quant_matrix)[-1] <- paste(colnames(quant_matrix[-1]), "Intensity")
+  #colnames(quant_matrix)[1] <- "ProteinName"
   quant_matrix[-1] <- apply(quant_matrix[-1], c(1, 2), function(x) 10^x)
   
   info_proteins <- read.csv("local_database/uniprotkb_proteome_UP000005640_2023_09_06.tsv", sep='\t')

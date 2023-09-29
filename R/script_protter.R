@@ -31,7 +31,7 @@ request_protter <- function(prot_ID, peptides="", annotations=c()){
                 "legend"="")
   
   if (!nchar(peptides) == 0){
-    param["n:Identified Peptides,fc:pink,bc:pink"] <- peptides
+    param["n:Identified Peptides,fc:grey,bc:grey"] <- peptides
   }
 
   if ('signal_pep' %in% annotations){

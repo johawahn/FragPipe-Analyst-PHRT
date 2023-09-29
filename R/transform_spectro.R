@@ -55,11 +55,12 @@ create_quant <- function(spec_quant){
   #############################
   # TRANSFORM PROTEIN FILE
   #############################
-  
   #Remove contaminants
   remove_contam_spectro <- function(df){
-    return(df[-grep("CONT|iRT", df$`Protein ID`),]) 
+    return(df[-grep("CONT", df$`Protein ID`),]) 
   }
+  
+  spec_quant[grep("Quantity",colnames(spec_quant))] <- apply(spec_quant[grep("Quantity",colnames(spec_quant))], 2, as.numeric)
   
   #Dictionary of Spectronaut to FragPipe equivalences (not samples)
   spec_to_frag <- c("PG.ProteinAccessions" = "Protein ID",

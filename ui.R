@@ -167,7 +167,8 @@ ui <- function(request){shinyUI(
                      radioButtons("work_select",
                                   "Workflow",
                                   choices = c("TMT"="TMT",
-                                              "LFQ"="LFQ"),
+                                              "LFQ"="LFQ",
+                                              "Spectronaut"="spectro"),
                                   selected = "TMT"),
                      
                      conditionalPanel(
@@ -202,6 +203,22 @@ ui <- function(request){shinyUI(
                                     selected = "Intensity")
                      ),
                      
+                     conditionalPanel(
+                       condition = "input.work_select == 'spectro'",
+                       selectInput("spectro_sep_quant_pep", "Enter quantification file separation:", 
+                                   sep_options, selected = ","),
+                       fileInput('spectro_expr_pep', "Upload Spectronaut ElutionGroup-PeptideReport.csv",
+                                 accept=c('text/csv',
+                                          'text/comma-separated-values,text/plain',
+                                          '.csv')),
+                       selectInput("spectro_sep_ano_pep", "Enter annotation  file separation:", 
+                                   sep_options, selected = ","),
+                       fileInput('spectro_manifest_pep', "Upload Spectronaut ConditionSetup.csv",
+                                 accept=c('text/csv',
+                                          'text/comma-separated-values,text/plain',
+                                          '.csv')),
+                     ),
+
                      
                    ), # Close tab peptide
                    
@@ -256,7 +273,13 @@ ui <- function(request){shinyUI(
                                                '.tsv',
                                                'text/csv',
                                                'text/comma-separated-values,text/plain',
-                                               '.csv'))
+                                               '.csv')),
+                            radioButtons("file_list_candidates_options",
+                                         "Type of candidates",
+                                         choices =  c("Gene Name"="gene_name",
+                                                      "Protein ID"="prot_id"
+                                         ), selected= "gene_name")
+                            
                             # checkboxInput("s",
                             #               "Paired test", FALSE),
                             # numericInput("k_number",
@@ -523,7 +546,7 @@ ui <- function(request){shinyUI(
                                                       #color=""
                                                       solidHeader = TRUE,
                                                       conditionalPanel(
-                                                        condition = "input.work_select == 'LFQ'",
+                                                        condition = "input.work_select == 'LFQ' | input.work_select == 'spectro'",
                                                         fluidRow(
                                                           column(4, textInput(inputId = 'motif_re', label = 'Enter Motif Regex', 
                                                                               value = "")),
@@ -546,7 +569,7 @@ ui <- function(request){shinyUI(
                                                         column(3,actionButton("original", "Refresh Table")),
                                                         column(3,actionButton("target_list_filter", "Filter Target List")),
                                                         column(3,conditionalPanel(
-                                                          condition = "input.work_select == 'LFQ'",
+                                                          condition = "input.work_select == 'LFQ' | input.work_select == 'spectro'",
                                                           actionButton("filter_motif", "Filter motif")
                                                         ))
                                                       ),
@@ -693,7 +716,7 @@ ui <- function(request){shinyUI(
                                                         )
                                                       ) # tabBox end
                                                     ), conditionalPanel(
-                                                      condition = "input.work_select == 'LFQ'",
+                                                      condition = "input.work_select == 'LFQ' | input.work_select == 'spectro'",
                                                       box(
                                                         title = "Protein Results Table",
                                                         status = "primary",

@@ -186,6 +186,9 @@ server <- function(input, output, session) {
        } else if (input$exp == "TMT-peptide" & input$work_select == "LFQ") {
            inFile <- input$lfq_pept_expr
            exp_design_file <- input$lfq_pept_annot
+        } else if (input$exp == "TMT-peptide" & input$work_select == "spectro") {
+          inFile <- input$spectro_expr_pep
+          exp_design_file <- input$spectro_manifest_pep
         } else{
            inFile <- input$tmt_pept_expr
            exp_design_file <- input$tmt_pept_annot
@@ -344,7 +347,9 @@ server <- function(input, output, session) {
       } else if (input$exp == "TMT-peptide") {
         if(input$work_select == "LFQ"){
           inFile <- input$lfq_pept_expr
-        }else{
+        } else if(input$work_select == "spectro"){
+          inFile <- input$spectro_expr_pep
+        } else{
           inFile <- input$tmt_pept_expr
         }
       } 
@@ -366,8 +371,22 @@ server <- function(input, output, session) {
         
         temp_data <- expr_to_frag_input(temp_data_quant)
       } else if (input$work_select == 'LFQ'){
-        
-        temp_data <- quant_lfq_to_tmt(inFile$datapath, input$lfq_pept_type)
+        temp_df <- read.table(inFile$datapath,
+                              header = TRUE,
+                              fill= TRUE, # to fill any missing data
+                              sep = "\t",
+                              quote = "",
+                              comment.char = "",
+                              blank.lines.skip = F,
+                              check.names = F)
+        temp_data <- quant_lfq_to_tmt(temp_df, input$lfq_pept_type)
+
+      } else if (input$work_select == 'spectro'){
+        temp_df <- read.csv(inFile$datapath,
+                              header = TRUE,
+                              sep = input$spectro_sep_quant_pep,
+                              check.names = F)
+        temp_data <- quant_spectro_to_tmt(temp_df)
 
       } else{
         temp_data <- read.table(inFile$datapath,
@@ -392,7 +411,6 @@ server <- function(input, output, session) {
       } else if (input$exp == "LFQ") {
         # handle - (dash) in experiment column
         colnames(temp_data) <- gsub("-", ".", colnames(temp_data))
-        print(names(temp_data))
         validate(fragpipe_input_test(temp_data))
         # remove contam
         temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
@@ -400,7 +418,7 @@ server <- function(input, output, session) {
         validate(fragpipe_DIA_input_test(temp_data))
         # temp_data <- temp_data[!grepl("contam", temp_data$Protein),]
       } else if (input$exp == "TMT-peptide") {
-        if(input$work_select == "LFQ"){
+        if(input$work_select %in% c("LFQ","spectro")){
           mut.cols <- colnames(temp_data)[!colnames(temp_data) %in% c("Index", "Gene", "ProteinID",	
                                                                       "Peptide", "MaxPepProb", "ReferenceIntensity",
                                                                       "ModPeptides")]
@@ -417,20 +435,7 @@ server <- function(input, output, session) {
       return(temp_data)
     })
 
-    # observeEvent(input$analyze,{
-    #   exp_design<-reactive({
-    #     inFile<-input$file2
-    #     if (is.null(inFile))
-    #       return(NULL)
-    #     temp_df<-read.table(inFile$datapath,
-    #                         header = TRUE,
-    #                         sep="\t",
-    #                         stringsAsFactors = FALSE)
-    #     exp_design_test(temp_df)
-    #     temp_df$label<-as.character(temp_df$label)
-    #     return(temp_df)
-    #   })    
-    # })
+
 
     exp_design_input <- eventReactive(input$analyze,{
       if (input$exp == "LFQ"){
@@ -449,6 +454,8 @@ server <- function(input, output, session) {
       } else if (input$exp == "TMT-peptide") {
         if (input$work_select == "LFQ"){
           inFile <- input$lfq_pept_annot
+        }else if (input$work_select == "spectro"){
+          inFile <- input$spectro_manifest_pep
         }else{
           inFile <- input$tmt_pept_annot
         }
@@ -457,8 +464,14 @@ server <- function(input, output, session) {
         return(NULL)
       if (input$exp == "TMT" | input$exp == "TMT-peptide") {
         if(input$work_select == "LFQ"){
-
-          temp_df <- anot_lfq_to_tmt(inFile$datapath)
+          df <- read.table(inFile$datapath, header = TRUE, sep='\t', 
+                           check.names = F)
+          temp_df <- anot_lfq_to_tmt(df)
+        } else if(input$work_select == "spectro"){
+          df <- read.csv(inFile$datapath, header = TRUE, sep=input$spectro_sep_ano_pep, 
+                           check.names = T)
+          
+          temp_df <- anot_spectro_to_tmt(df)
         } else{
           temp_df <- read.table(inFile$datapath,
                               header = T,
@@ -503,7 +516,8 @@ server <- function(input, output, session) {
         if (input$soft_select == "Spectronaut"){
           temp_data_annot <-  read.csv(inFile$datapath,
                                        header = TRUE, 
-                                       sep=input$spectro_sep_ano)
+                                       sep=input$spectro_sep_ano,
+                                       check.names = T)
 
           temp_df <- create_annotation(temp_data_annot)
           
@@ -717,7 +731,8 @@ server <- function(input, output, session) {
       dev.off()
       
     })
-
+    ###### END TEMPORAL DATA ANALYSIS  ############################## 
+    
     
 ### Load data from Rdata
   # observeEvent(input$load_data,{
@@ -879,7 +894,7 @@ server <- function(input, output, session) {
        cols <- colnames(data_unique)
        selected_cols <- which(!(cols %in% interest_cols))
        test_match_tmt_column_design(data_unique, selected_cols, temp_exp_design)
-       if (input$work_select == "LFQ"){
+       if (input$work_select %in% c("LFQ","spectro")){
          # TMT-I report is already log2 transformed
        data_se <- make_se_customized(data_unique, selected_cols, log2transform=T, temp_exp_design, exp="TMT", 
                                      level="peptide")
@@ -1050,7 +1065,6 @@ server <- function(input, output, session) {
        unlist(strsplit(temp,","))
        ## Remove leading and trailing spaces
        trimws(temp)
-       #print(temp)
      } else if (input$exp == "LFQ" ) {
        temp<-capture.output(test_diff(imputed_data(),type='all'),type = "message")
        gsub(".*: ","",temp)
@@ -1369,7 +1383,7 @@ server <- function(input, output, session) {
    })
    
    cvs_input<-reactive({
-     if (input$work_select == "LFQ"){
+     if (input$work_select %in% c("LFQ","spectro")){
        plot_cvs(dep(), id="label", scale=!input$cvs_full_range, check.names=F, work_select=T) 
      } else {
       plot_cvs(dep(), id="label", scale=!input$cvs_full_range, check.names=F) 
@@ -1434,13 +1448,13 @@ server <- function(input, output, session) {
      return(info_box)
    })})
    
-
+   ###### PROTEIN LEVEL ANALYSIS FROM PEPTIDE REPORT  ############################## 
   ##### Get results dataframe from Summarizedexperiment object
    data_result <- reactiveVal(0)
    data_result_og <- reactiveVal(0)
    
     observeEvent(input$analyze, {
-      if(input$work_select=='LFQ'){data_result(get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE))
+      if(input$work_select %in% c("LFQ","spectro")){data_result(get_results_proteins(dep(), input$exp, PEP_LFQ=TRUE))
         } else {
           data_result(get_results_proteins(dep(), input$exp))
           }
@@ -1452,7 +1466,7 @@ server <- function(input, output, session) {
     
     # Obtain protein level table from peptide level LFQ report
     data_result_pep <- eventReactive(input$analyze, {
-      if(input$work_select=='LFQ'){as.data.frame(assay(dep())) %>% 
+      if(input$work_select%in% c("LFQ","spectro")){as.data.frame(assay(dep())) %>% 
            mutate(across(.cols = where(is.numeric), ~replace_na(., 0))) %>%
            mutate(ProteinID = rowData(dep())$ProteinID) %>%
            mutate(Gene = rowData(dep())$Gene) %>%
@@ -1462,7 +1476,7 @@ server <- function(input, output, session) {
     
     #Protein level (LFQ-peptide) experimental design
     exp_design <- eventReactive(input$analyze, {
-      if(input$work_select=='LFQ'){exp_design_input() %>%
+      if(input$work_select%in% c("LFQ","spectro")){exp_design_input() %>%
         mutate(condition = make.names(exp_design_input()$condition)) %>%
         mutate(sample = gsub("-", ".", exp_design_input()$sample)) %>%
         mutate(label = exp_design_input()$sample) %>%
@@ -1478,7 +1492,7 @@ server <- function(input, output, session) {
     
     #Summarized experiment object for protein level (LFQ-peptide)
     result_se_sum_prot <- eventReactive(input$analyze, {
-      if(input$work_select=='LFQ'){
+      if(input$work_select%in% c("LFQ","spectro")){
         as.data.frame(data_result_pep()) %>%
           DEP::make_unique("Gene", "ProteinID") %>%
           rename_with(
@@ -1504,17 +1518,18 @@ server <- function(input, output, session) {
     data_result_pep_prot_level_og <- reactiveVal(0)
     
     observeEvent(input$analyze, {
-      if(input$work_select=='LFQ'){
+      if(input$work_select%in% c("LFQ","spectro")){
         data_result_pep_prot_level(get_results_proteins(result_se_sum_prot(), "LFQ-peptide"))
         data_result_pep_prot_level_og(data_result_pep_prot_level())
       }
       })
     
+    ###### END PROTEIN LEVEL ANALYSIS FROM PEPTIDE REPORT  ##############################  
     
     
     # Plot reactive volcano 
     observeEvent(input$analyze,
-                 {if(input$work_select=='LFQ'){
+                 {if(input$work_select%in% c("LFQ","spectro")){
                   
                    volcano_input_sum_prot <- reactive({
                      if(!is.null(input$volcano_cntrst)) {
@@ -1624,7 +1639,7 @@ server <- function(input, output, session) {
    
    # Plot volcano of summed proteins table
    observeEvent(input$work_select,
-                {if(input$work_select=='LFQ'){
+                {if(input$work_select %in% c("LFQ","spectro")){
                   # First extract modifications present in the data
                   output$mod_options <- renderUI({
                     selectInput("mods_in_data",
@@ -1669,6 +1684,7 @@ server <- function(input, output, session) {
    
 
 ########## FILTERING CANDIDATE LIST ######################
+   #Heatmap and button only appear if a file has been uploaded
    observe(
      if (!is.null(input$file_list_candidates)){
        shinyjs::show("target_list_filter")
@@ -1677,17 +1693,25 @@ server <- function(input, output, session) {
      }
    )
    
-
+  #Read candidate list
    list_candidates <- eventReactive(input$file_list_candidates, {
      inFile <- input$file_list_candidates
      df <- read.csv(inFile$datapath, header=F)[,1]
      return(df)
    })
    
+   candi_type <- eventReactive(input$target_list_filter, {
+     if(input$file_list_candidates_options=="gene_name"){
+       return('Gene Name')
+     } else {
+       return('Protein ID')
+     }
+   })
+   
+   #Perform filtering and render table
    observeEvent(input$target_list_filter,{
-     print('0')
      output$contents <- DT::renderDataTable({
-       idx <- which(data_result()[,'Gene Name'] %in% list_candidates())
+       idx <- which(data_result()[,as.character(candi_type())] %in% list_candidates())
        data_result(data_result()[idx,])
        return(data_result())
      },
@@ -1696,8 +1720,10 @@ server <- function(input, output, session) {
                     columnDefs= list(list(width = '400px', targets = c(-1))),
                     lengthMenu = c(10, 20))
      )
+     
    })
    
+   #Obtain heatmap of all candidates
    candidate_heatmap_cluster<-eventReactive({
      input$analyze
      input$candi_show_row_names
@@ -1706,7 +1732,9 @@ server <- function(input, output, session) {
      if(input$analyze==0 | !start_analysis()){
        return()
      }
-     idx <- which(data_result_og()[,'Gene Name'] %in% list_candidates())
+     
+     
+     idx <- which(data_result_og()[,as.character(candi_type())] %in% list_candidates())
      
      if (input$candi_only_sig){
        alpha_candi <- input$p
@@ -1736,7 +1764,6 @@ server <- function(input, output, session) {
    
    
    output$candidate_heatmap<-renderPlot({
-     print(3)
      withProgress(message = 'Heatmap rendering is in progress',
                   detail = 'Please wait for a while', value = 0, {
                     for (i in 1:15) {
@@ -1801,8 +1828,12 @@ server <- function(input, output, session) {
      if (input$mod_w_motif){
        data_result(data_result_og())
      }
+     if(input$motif_re==""){
+       idx <- NULL
+     } else{
+       idx <- str_detect(data_result()$`Index`, input$motif_re)
+     }
      
-     idx <- str_detect(data_result()$`Index`, input$motif_re)
      if(input$keep_motif == 'excl'){
        idx <- idx*-1
      }
@@ -2047,7 +2078,6 @@ server <- function(input, output, session) {
     #Move downloaded images to temporary folder and delete the created folder ("term_visualization")
     PIN_analysis <- eventReactive(PIN_results(), {
     #req(PIN_results())
-    print(PIN_output_name())
     file.copy(from=paste0("term_visualizations/", list.files("term_visualizations")), 
               to=as.character(PIN_output_name()))
     file.remove(from=paste0("term_visualizations/", list.files("term_visualizations")))
