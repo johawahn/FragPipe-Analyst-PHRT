@@ -3,7 +3,7 @@
 
 # FragPipe-Analyst-PHRT
 
-Modification of FragPipe-Analyst (WORK IN PROGRESS)
+Personalized version of FragPipe-Analyst
 
 A tool for analyzing quantitative proteomics datasets for [FragPipe](https://fragpipe.nesvilab.org/).
 
